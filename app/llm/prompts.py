@@ -20,6 +20,24 @@ QA_PROMPT = PromptTemplate(
 )
 
 
+CONDENSE_PROMPT = PromptTemplate(
+    template=(
+        "Given the following conversation history and a follow-up question, "
+        "rewrite the follow-up question to be a standalone, self-contained question "
+        "that can be understood without the conversation history.\n"
+        "Do NOT answer the question. Only rewrite it.\n"
+        "If the follow-up question is already standalone, return it unchanged.\n"
+        "\n"
+        "Conversation History:\n"
+        "{chat_history}\n"
+        "\n"
+        "Follow-up Question: {question}\n"
+        "\n"
+        "Standalone Question:"
+    )
+)
+
+
 QUIZ_GENERATION_PROMPT = PromptTemplate(
     template=(
         "You generate quizzes from the provided context only.\n"

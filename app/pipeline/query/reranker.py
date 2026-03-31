@@ -3,13 +3,16 @@ import logging
 
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
 
+from app.config.settings import settings
+
 logger = logging.getLogger(__name__)
 
 
-def get_reranker(top_n: int = 3) -> BaseNodePostprocessor:
+def get_reranker(top_n: int | None = None) -> BaseNodePostprocessor:
+    if top_n is None:
+        top_n = settings.reranker_top_n
     try:
         from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
-        from app.config.settings import settings
         return FlagEmbeddingReranker(
             model=settings.reranker_model_name,
             top_n=top_n,

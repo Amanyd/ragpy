@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from app.api.schemas.chat import ChatRequest, ChatResponse, CitationItem
+from app.pipeline.query.condenser import condense_query
 from app.pipeline.query.engine import get_query_engine
 from app.pipeline.query.synthesizer import format_citations
 
@@ -19,17 +20,22 @@ router = APIRouter()
 @router.post("/", tags=["chat"])
 async def chat(request: ChatRequest):
     """Answer a student query; streaming or non-streaming based on request.stream."""
+
+    # Condense follow-up questions using conversation history
+    history_dicts = [{"role": m.role, "content": m.content} for m in request.history]
+    query = await asyncio.to_thread(condense_query, request.query, history_dicts)
+
     engine = get_query_engine(course_id=request.course_id, streaming=request.stream)
 
     if request.stream:
         return StreamingResponse(
-            _sse_generator(engine, request.query),
+            _sse_generator(engine, query),
             media_type="text/event-stream",
             headers={"X-Accel-Buffering": "no"},
         )
 
     # Non-streaming: call async aquery and return JSON.
-    response = await engine.aquery(request.query)
+    response = await engine.aquery(query)
     citations = format_citations(response)
     return ChatResponse(
         answer=str(response),
@@ -62,3 +68,4 @@ async def _sse_generator(engine, query: str):
         logger.exception("chat_stream_error query=%s", query[:80])
         yield f"data: {json.dumps({'error': 'stream failed'})}\n\n"
         yield "data: [DONE]\n\n"
+

@@ -1,6 +1,11 @@
-
-
 from pydantic import BaseModel, Field
+
+
+class ChatMessage(BaseModel):
+    """A single turn in the conversation history."""
+
+    role: str  # "user" or "assistant"
+    content: str
 
 
 class ChatRequest(BaseModel):
@@ -8,6 +13,11 @@ class ChatRequest(BaseModel):
     course_id: str
     query: str = Field(min_length=1, max_length=2000)
     stream: bool = True
+    history: list[ChatMessage] = Field(
+        default_factory=list,
+        description="Previous conversation turns for context. Last N messages.",
+        max_length=20,
+    )
 
 
 class CitationItem(BaseModel):

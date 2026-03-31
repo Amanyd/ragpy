@@ -6,47 +6,6 @@ from llama_index.core import Document
 
 logger = logging.getLogger(__name__)
 
-_TEXT_RATIO_THRESHOLD = 0.30
-
-_vision_available: bool | None = None
-
-def _check_vision_available() -> bool:
-    global _vision_available
-    if _vision_available is not None:
-        return _vision_available
-
-    import httpx
-    from app.config.settings import settings
-
-    try:
-        resp = httpx.get(
-            f"{settings.ollama_base_url}/api/tags",
-            timeout=5.0,
-        )
-        resp.raise_for_status()
-        models = resp.json().get("models", [])
-        base_name = settings.ollama_model.split(":")[0]
-        for model in models:
-            if model.get("name", "").startswith(base_name):
-                families = model.get("details", {}).get("families", [])
-                _vision_available = "clip" in families or "vision" in families
-                logger.info(
-                    "vision_probe model=%s available=%s families=%s",
-                    settings.ollama_model,
-                    _vision_available,
-                    families,
-                )
-                return _vision_available
-        logger.warning(
-            "vision_probe model=%s not found in Ollama",
-            settings.ollama_model,
-        )
-    except Exception:
-        logger.warning("vision_probe_failed — defaulting to no vision")
-
-    _vision_available = False
-    return False
-
 def _table_to_markdown(raw_rows: list[list[str]]) -> str:
     if not raw_rows:
         return ""
@@ -160,96 +119,6 @@ def _extract_slide_notes(slide) -> str:
         pass
     return ""
 
-def _rasterize_slide(pptx_path: Path, slide_index: int) -> bytes:
-    import io
-    import shutil
-    import subprocess
-    import tempfile
-
-    from pdf2image import convert_from_path
-
-    tmp = Path(tempfile.mkdtemp(prefix="rag_pptx_"))
-    try:
-        subprocess.run(
-            [
-                "libreoffice", "--headless",
-                "--convert-to", "pdf",
-                "--outdir", str(tmp),
-                str(pptx_path),
-            ],
-            check=True,
-            capture_output=True,
-            timeout=120,
-        )
-        pdf_path = tmp / (pptx_path.stem + ".pdf")
-        if not pdf_path.exists():
-            logger.error(
-                "libreoffice_pdf_missing file=%s slide=%d",
-                pptx_path.name, slide_index,
-            )
-            return b""
-
-        images = convert_from_path(
-            pdf_path,
-            dpi=150,
-            first_page=slide_index,
-            last_page=slide_index,
-        )
-        if not images:
-            return b""
-
-        buf = io.BytesIO()
-        images[0].save(buf, format="PNG")
-        return buf.getvalue()
-
-    except subprocess.CalledProcessError as e:
-        logger.error(
-            "libreoffice_failed file=%s slide=%d stderr=%s",
-            pptx_path.name, slide_index,
-            e.stderr.decode(errors="replace")[:200],
-        )
-        return b""
-    except Exception:
-        logger.exception(
-            "rasterize_failed file=%s slide=%d", pptx_path.name, slide_index
-        )
-        return b""
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
-
-def _describe_slide_with_vision(png_bytes: bytes, slide_num: int) -> str:
-    import base64
-
-    import httpx
-    from app.config.settings import settings
-
-    b64 = base64.b64encode(png_bytes).decode()
-    payload = {
-        "model": settings.ollama_model,
-        "prompt": (
-            "This is a slide from an educational presentation. "
-            "Extract ALL text visible on this slide exactly as written. "
-            "Preserve bullet points, numbering, and any table structure. "
-            "If there are diagrams or charts, describe what they show."
-        ),
-        "images": [b64],
-        "stream": False,
-    }
-    try:
-        resp = httpx.post(
-            f"{settings.ollama_base_url}/api/generate",
-            json=payload,
-            timeout=180.0,
-        )
-        resp.raise_for_status()
-        return resp.json().get("response", "").strip()
-    except Exception:
-        logger.exception(
-            "vision_inference_failed slide=%d model=%s",
-            slide_num, settings.ollama_model,
-        )
-        return ""
-
 def parse_pptx(file_path: Path) -> list[Document]:
     from pptx import Presentation
 
@@ -260,48 +129,18 @@ def parse_pptx(file_path: Path) -> list[Document]:
         logger.warning("pptx_empty file=%s", file_path.name)
         return []
 
-    slide_texts = [_extract_slide_text(slide) for slide in prs.slides]
-    slides_with_text = sum(1 for t in slide_texts if t.strip())
-    text_ratio = slides_with_text / total_slides
-
-    vision_supported = _check_vision_available()
-    use_vision = text_ratio < _TEXT_RATIO_THRESHOLD and vision_supported
-
-    logger.info(
-        "pptx_probe file=%s total=%d with_text=%d ratio=%.2f "
-        "vision_supported=%s use_vision=%s",
-        file_path.name, total_slides, slides_with_text,
-        text_ratio, vision_supported, use_vision,
-    )
-
-    if text_ratio < _TEXT_RATIO_THRESHOLD and not vision_supported:
-        logger.warning(
-            "pptx_image_heavy file=%s ratio=%.2f",
-            file_path.name, text_ratio,
-        )
-
     documents: list[Document] = []
 
     for i, slide in enumerate(prs.slides, 1):
+        content = _extract_slide_text(slide)
         notes = _extract_slide_notes(slide)
 
-        if use_vision:
-            png = _rasterize_slide(file_path, i)
-            if not png:
-                logger.warning(
-                    "pptx_rasterize_empty file=%s slide=%d",
-                    file_path.name, i,
-                )
-                continue
-            content = _describe_slide_with_vision(png, i)
-        else:
-            content = slide_texts[i - 1]
-            if not content.strip():
-                logger.warning(
-                    "pptx_slide_no_text file=%s slide=%d",
-                    file_path.name, i,
-                )
-                continue
+        if not content.strip():
+            logger.warning(
+                "pptx_slide_no_text file=%s slide=%d",
+                file_path.name, i,
+            )
+            continue
 
         full_text = f"Slide {i}:\n\n{content}"
         if notes:

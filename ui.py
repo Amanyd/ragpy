@@ -113,11 +113,18 @@ with tabs[0]:
         if final_prompt:
             st.session_state.messages.append({"role": "user", "content": final_prompt})
 
+            # Build conversation history for the API (last 10 messages, excluding the current one)
+            history = [
+                {"role": m["role"], "content": m["content"]}
+                for m in st.session_state.messages[:-1][-10:]
+            ]
+
             with st.spinner("Thinking..."):
                 resp = requests.post(f"{API_URL}/chat/", headers=HEADERS, json={
                     "course_id": COURSE_ID,
                     "query": final_prompt,
-                    "stream": False
+                    "stream": False,
+                    "history": history,
                 })
                 
                 if resp.ok:
