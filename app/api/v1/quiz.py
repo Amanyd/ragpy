@@ -8,7 +8,7 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.api.schemas.quiz import QuizRequest
-from app.messaging.client import get_nc
+from app.messaging.client import get_js
 from app.messaging.subjects import RAG_QUIZ_PUBLISH_SUBJECT
 
 logger = logging.getLogger(__name__)
@@ -23,8 +23,8 @@ async def generate_quiz(request: QuizRequest) -> JSONResponse:
         "difficulty": request.difficulty,
         "limit_chunks": request.limit_chunks,
     }
-    nc = get_nc()
-    await nc.publish(RAG_QUIZ_PUBLISH_SUBJECT, json.dumps(payload).encode())
+    js = get_js()
+    await js.publish(RAG_QUIZ_PUBLISH_SUBJECT, json.dumps(payload).encode())
     logger.info("quiz_enqueued course_id=%s difficulty=%s", request.course_id, request.difficulty)
     return JSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
