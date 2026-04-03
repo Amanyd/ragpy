@@ -46,6 +46,11 @@ async def process_ingest_message(msg: Msg) -> None:
             file_name=payload["file_name"],
             teacher_id=payload["teacher_id"],
         )
+        # Invalidate BM25 cache so new chunks are immediately searchable
+        from app.pipeline.query.sparse_retriever import _build_bm25_index
+        _build_bm25_index.cache_clear()
+        logger.info("bm25_cache_cleared after ingest file_id=%s", payload["file_id"])
+
         js = get_js()
         await js.publish(RAG_INGEST_DONE_SUBJECT, json.dumps(result).encode())
         await msg.ack()
