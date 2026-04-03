@@ -36,7 +36,7 @@ class QuizOutput(BaseModel):
     questions: list[QuizQuestion]
 
 
-async def format_quiz(nodes: list[BaseNode], course_id: str) -> QuizOutput:
+async def format_quiz(nodes: list[BaseNode], course_id: str, difficulty: str = "medium") -> QuizOutput:
     """Call LLM with structured prediction to produce a QuizOutput from nodes."""
     context_parts: list[str] = []
     for node in nodes:
@@ -55,6 +55,7 @@ async def format_quiz(nodes: list[BaseNode], course_id: str) -> QuizOutput:
         QuizOutput,
         QUIZ_GENERATION_PROMPT,
         context_str=context_str,
+        difficulty=difficulty,
     )
 
     # Stamp course_id on the result (LLM may not know it).

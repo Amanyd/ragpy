@@ -117,6 +117,7 @@ def _stratified_sample(nodes: list[TextNode], budget: int) -> list[TextNode]:
 
 async def generate_course_quiz(
     course_id: str,
+    difficulty: str = "medium",
     limit_chunks: int = 20,
 ) -> QuizOutput:
     """Fetch ALL course nodes, stratified-sample across files, generate quiz."""
@@ -132,6 +133,6 @@ async def generate_course_quiz(
     sampled_nodes = _stratified_sample(all_nodes, budget=limit_chunks)
 
     enriched_nodes = await extract_qa_pairs(sampled_nodes)
-    result = await format_quiz(enriched_nodes, course_id)
+    result = await format_quiz(enriched_nodes, course_id, difficulty=difficulty)
     logger.info("quiz_done course_id=%s questions=%d", course_id, len(result.questions))
     return result

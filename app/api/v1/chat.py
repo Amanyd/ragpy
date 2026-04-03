@@ -25,7 +25,7 @@ async def chat(request: ChatRequest):
     history_dicts = [{"role": m.role, "content": m.content} for m in request.history]
     query = await asyncio.to_thread(condense_query, request.query, history_dicts)
 
-    engine = get_query_engine(course_id=request.course_id, streaming=request.stream)
+    engine = get_query_engine(course_ids=request.course_ids, streaming=request.stream)
 
     if request.stream:
         return StreamingResponse(

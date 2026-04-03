@@ -10,7 +10,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
 
-    course_id: str
+    course_ids: list[str]
     query: str = Field(min_length=1, max_length=2000)
     stream: bool = True
     history: list[ChatMessage] = Field(

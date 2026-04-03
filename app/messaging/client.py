@@ -16,6 +16,8 @@ from app.messaging.subjects import (
     RAG_INGEST_DONE_SUBJECTS,
     RAG_QUIZ_STREAM,
     RAG_QUIZ_SUBJECTS,
+    RAG_QUIZ_DONE_STREAM,
+    RAG_QUIZ_DONE_SUBJECTS,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,4 +96,5 @@ async def _setup_streams() -> None:
     await _ensure_stream(RAG_INGEST_STREAM, RAG_INGEST_SUBJECTS)
     await _ensure_done_stream(RAG_INGEST_DONE_STREAM, RAG_INGEST_DONE_SUBJECTS)
     await _ensure_stream(RAG_QUIZ_STREAM, RAG_QUIZ_SUBJECTS)
+    await _ensure_done_stream(RAG_QUIZ_DONE_STREAM, RAG_QUIZ_DONE_SUBJECTS)
 

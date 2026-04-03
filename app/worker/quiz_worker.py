@@ -1,4 +1,4 @@
-"""NATS JetStream push consumer for async quiz generation."""
+"""NATS JetStream pull consumer for async quiz generation."""
 
 
 import asyncio
@@ -11,6 +11,7 @@ from nats.aio.msg import Msg
 from app.messaging.client import get_js, get_nc
 from app.messaging.subjects import (
     DURABLE_QUIZ_WORKER,
+    RAG_QUIZ_DONE_SUBJECT,
     RAG_QUIZ_PUBLISH_SUBJECT,
     RAG_QUIZ_STREAM,
 )
@@ -34,19 +35,37 @@ async def process_quiz_message(msg: Msg) -> None:
         await msg.term()
         return
 
+    difficulty: str = payload.get("difficulty", "medium")
     limit_chunks: int = int(payload.get("limit_chunks", 20))
 
+    nc = get_nc()
+
     try:
-        result = await generate_course_quiz(course_id=course_id, limit_chunks=limit_chunks)
+        result = await generate_course_quiz(
+            course_id=course_id,
+            difficulty=difficulty,
+            limit_chunks=limit_chunks,
+        )
 
-        # If requester set a reply subject, publish the result back.
-        if msg.reply:
-            nc = get_nc()
-            await nc.publish(msg.reply, result.model_dump_json().encode())
-
+        done_payload = {
+            "status": "success",
+            "course_id": course_id,
+            "difficulty": difficulty,
+            "questions": json.loads(result.model_dump_json())["questions"],
+        }
+        await nc.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
+        logger.info("quiz_done course_id=%s difficulty=%s questions=%d", course_id, difficulty, len(result.questions))
         await msg.ack()
+
     except Exception:
-        logger.exception("quiz_failed course_id=%s", course_id)
+        logger.exception("quiz_failed course_id=%s difficulty=%s", course_id, difficulty)
+        done_payload = {
+            "status": "failed",
+            "course_id": course_id,
+            "difficulty": difficulty,
+            "questions": [],
+        }
+        await nc.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
         await msg.nak(delay=5)
 
 

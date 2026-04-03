@@ -11,8 +11,8 @@ from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle
 
 from app.config.settings import settings
-from app.pipeline.query.bm25_retriever import bm25_retrieve
-from app.pipeline.query.retriever import get_retriever
+from app.pipeline.query.sparse_retriever import bm25_retrieve
+from app.pipeline.query.dense_retriever import get_retriever
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +47,12 @@ def _reciprocal_rank_fusion(
 class HybridRetriever(BaseRetriever):
     """Retriever that fuses dense vector search + BM25 via RRF."""
 
-    def __init__(self, course_id: str, top_k: int | None = None):
+    def __init__(self, course_ids: list[str], top_k: int | None = None):
         super().__init__()
-        self._course_id = course_id
+        self._course_ids = course_ids
         self._top_k = top_k or settings.retrieval_top_k
         self._rrf_k = settings.rrf_k
-        self._dense_retriever = get_retriever(course_id=course_id, top_k=self._top_k)
+        self._dense_retriever = get_retriever(course_ids=course_ids, top_k=self._top_k)
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
         query_str = query_bundle.query_str
@@ -62,12 +62,12 @@ class HybridRetriever(BaseRetriever):
 
         # 2. BM25 sparse retrieval
         bm25_results = bm25_retrieve(
-            query=query_str, course_id=self._course_id, top_k=self._top_k
+            query=query_str, course_ids=self._course_ids, top_k=self._top_k
         )
 
         logger.info(
-            "hybrid_retrieve course=%s dense=%d bm25=%d",
-            self._course_id,
+            "hybrid_retrieve courses=%s dense=%d bm25=%d",
+            self._course_ids,
             len(dense_results),
             len(bm25_results),
         )
@@ -79,3 +79,4 @@ class HybridRetriever(BaseRetriever):
 
         # Return top_k fused results (the reranker will further filter)
         return fused[: self._top_k]
+

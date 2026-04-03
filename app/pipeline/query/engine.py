@@ -6,13 +6,13 @@ from app.pipeline.query.reranker import get_reranker
 from app.pipeline.query.synthesizer import get_synthesizer
 
 
-def get_query_engine(course_id: str, streaming: bool = False) -> RetrieverQueryEngine:
+def get_query_engine(course_ids: list[str], streaming: bool = False) -> RetrieverQueryEngine:
     if settings.hybrid_search_enabled:
-        from app.pipeline.query.hybrid_retriever import HybridRetriever
-        retriever = HybridRetriever(course_id=course_id)
+        from app.pipeline.query.full_retriever import HybridRetriever
+        retriever = HybridRetriever(course_ids=course_ids)
     else:
-        from app.pipeline.query.retriever import get_retriever
-        retriever = get_retriever(course_id=course_id)
+        from app.pipeline.query.dense_retriever import get_retriever
+        retriever = get_retriever(course_ids=course_ids)
 
     reranker = get_reranker()
     synthesizer = get_synthesizer(streaming=streaming)

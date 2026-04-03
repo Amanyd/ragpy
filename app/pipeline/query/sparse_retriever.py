@@ -25,8 +25,8 @@ def _tokenize(text: str) -> list[str]:
     return [t for t in _SPLIT_RE.split(text.lower()) if t]
 
 
-def _fetch_course_nodes(course_id: str) -> list[TextNode]:
-    """Scroll through Qdrant to fetch all nodes for a course."""
+def _fetch_course_nodes(course_ids: list[str]) -> list[TextNode]:
+    """Scroll through Qdrant to fetch all nodes for the given courses."""
     client = get_sync_client()
     collection = settings.qdrant_collection_name
     nodes: list[TextNode] = []
@@ -39,7 +39,7 @@ def _fetch_course_nodes(course_id: str) -> list[TextNode]:
                 must=[
                     qmodels.FieldCondition(
                         key="course_id",
-                        match=qmodels.MatchValue(value=course_id),
+                        match=qmodels.MatchAny(any=course_ids),
                     )
                 ]
             ),
@@ -70,27 +70,27 @@ def _fetch_course_nodes(course_id: str) -> list[TextNode]:
             break
         offset = next_offset
 
-    logger.info("bm25_fetched course_id=%s nodes=%d", course_id, len(nodes))
+    logger.info("bm25_fetched course_ids=%s nodes=%d", course_ids, len(nodes))
     return nodes
 
 
-# Simple cache keyed on course_id — avoids re-fetching on every query.
+# Cache keyed on frozenset of course_ids — avoids re-fetching on every query.
 # For production, add a TTL or invalidation on ingest.
 @lru_cache(maxsize=32)
-def _build_bm25_index(course_id: str) -> tuple[BM25Okapi, list[TextNode]]:
-    nodes = _fetch_course_nodes(course_id)
+def _build_bm25_index(course_ids_key: frozenset[str]) -> tuple[BM25Okapi, list[TextNode]]:
+    nodes = _fetch_course_nodes(list(course_ids_key))
     if not nodes:
         return BM25Okapi([["__empty__"]]), []
     corpus = [_tokenize(n.text) for n in nodes]
     return BM25Okapi(corpus), nodes
 
 
-def bm25_retrieve(query: str, course_id: str, top_k: int | None = None) -> list[NodeWithScore]:
-    """Return top_k nodes scored by BM25 for the given query and course."""
+def bm25_retrieve(query: str, course_ids: list[str], top_k: int | None = None) -> list[NodeWithScore]:
+    """Return top_k nodes scored by BM25 for the given query and courses."""
     if top_k is None:
         top_k = settings.retrieval_top_k
 
-    bm25, nodes = _build_bm25_index(course_id)
+    bm25, nodes = _build_bm25_index(frozenset(course_ids))
     if not nodes:
         return []
 
@@ -106,5 +106,5 @@ def bm25_retrieve(query: str, course_id: str, top_k: int | None = None) -> list[
             break
         results.append(NodeWithScore(node=node, score=float(score)))
 
-    logger.debug("bm25_retrieve course=%s query=%s results=%d", course_id, query[:60], len(results))
+    logger.debug("bm25_retrieve courses=%s query=%s results=%d", course_ids, query[:60], len(results))
     return results
