@@ -5,6 +5,7 @@ import asyncio
 import json
 import logging
 import nats.errors
+from nats.js.api import ConsumerConfig
 
 from nats.aio.msg import Msg
 
@@ -76,6 +77,7 @@ async def start_quiz_worker() -> None:
         RAG_QUIZ_PUBLISH_SUBJECT,
         durable=DURABLE_QUIZ_WORKER,
         stream=RAG_QUIZ_STREAM,
+        config=ConsumerConfig(max_deliver=5),
     )
     logger.info("quiz_worker pull_subscribe registered subject=%s", RAG_QUIZ_PUBLISH_SUBJECT)
 

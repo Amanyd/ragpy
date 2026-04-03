@@ -5,6 +5,7 @@ import asyncio
 import json
 import logging
 import nats.errors
+from nats.js.api import ConsumerConfig
 
 from nats.aio.msg import Msg
 
@@ -71,6 +72,7 @@ async def start_ingest_worker() -> None:
         RAG_INGEST_PUBLISH_SUBJECT,
         durable=DURABLE_INGEST_WORKER,
         stream=RAG_INGEST_STREAM,
+        config=ConsumerConfig(max_deliver=5),
     )
     logger.info("ingest_worker pull_subscribe registered subject=%s", RAG_INGEST_PUBLISH_SUBJECT)
 
