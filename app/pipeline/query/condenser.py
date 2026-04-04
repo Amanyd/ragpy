@@ -7,10 +7,27 @@ When there is no history, the original query is returned unchanged.
 
 import logging
 
-from app.llm.factory import get_llm
+from llama_index.llms.ollama import Ollama
+
+from app.config.settings import settings
 from app.llm.prompts import CONDENSE_PROMPT
 
 logger = logging.getLogger(__name__)
+
+# Dedicated lightweight LLM for condensing — smaller context = faster inference
+_condenser_llm: Ollama | None = None
+
+
+def _get_condenser_llm() -> Ollama:
+    global _condenser_llm
+    if _condenser_llm is None:
+        _condenser_llm = Ollama(
+            model=settings.ollama_model,
+            base_url=settings.ollama_base_url,
+            request_timeout=30.0,
+            additional_kwargs={"num_ctx": 2048},
+        )
+    return _condenser_llm
 
 
 def condense_query(
@@ -42,7 +59,7 @@ def condense_query(
         question=query,
     )
 
-    llm = get_llm()
+    llm = _get_condenser_llm()
     try:
         response = llm.complete(prompt)
         condensed = str(response).strip()

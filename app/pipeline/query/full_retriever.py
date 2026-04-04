@@ -6,6 +6,7 @@ where k = 60 (industry standard), r iterates over each ranking list.
 
 import logging
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle
@@ -57,13 +58,17 @@ class HybridRetriever(BaseRetriever):
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
         query_str = query_bundle.query_str
 
-        # 1. Dense vector retrieval
-        dense_results = self._dense_retriever.retrieve(query_str)
-
-        # 2. BM25 sparse retrieval
-        bm25_results = bm25_retrieve(
-            query=query_str, course_ids=self._course_ids, top_k=self._top_k
-        )
+        # Run dense + BM25 in parallel (they're independent)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            dense_future = pool.submit(self._dense_retriever.retrieve, query_str)
+            bm25_future = pool.submit(
+                bm25_retrieve,
+                query=query_str,
+                course_ids=self._course_ids,
+                top_k=self._top_k,
+            )
+            dense_results = dense_future.result()
+            bm25_results = bm25_future.result()
 
         logger.info(
             "hybrid_retrieve courses=%s dense=%d bm25=%d",
@@ -72,7 +77,7 @@ class HybridRetriever(BaseRetriever):
             len(bm25_results),
         )
 
-        # 3. Reciprocal Rank Fusion
+        # Reciprocal Rank Fusion
         fused = _reciprocal_rank_fusion(
             [dense_results, bm25_results], k=self._rrf_k
         )

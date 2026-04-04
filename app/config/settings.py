@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     reranker_model_name: str = Field(default="BAAI/bge-reranker-base", validation_alias="RERANKER_MODEL_NAME")
 
     retrieval_top_k: int = Field(default=15, validation_alias="RETRIEVAL_TOP_K")
-    reranker_top_n: int = Field(default=5, validation_alias="RERANKER_TOP_N")
+    reranker_top_n: int = Field(default=3, validation_alias="RERANKER_TOP_N")
     hybrid_search_enabled: bool = Field(default=True, validation_alias="HYBRID_SEARCH_ENABLED")
     rrf_k: int = Field(default=60, validation_alias="RRF_K")
 
