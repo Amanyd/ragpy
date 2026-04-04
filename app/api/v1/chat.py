@@ -21,9 +21,12 @@ router = APIRouter()
 async def chat(request: ChatRequest):
     """Answer a student query; streaming or non-streaming based on request.stream."""
 
-    # Condense follow-up questions using conversation history
-    history_dicts = [{"role": m.role, "content": m.content} for m in request.history]
-    query = await asyncio.to_thread(condense_query, request.query, history_dicts)
+    # Condense follow-up questions using conversation history (skip on first message)
+    if request.history:
+        history_dicts = [{"role": m.role, "content": m.content} for m in request.history]
+        query = await asyncio.to_thread(condense_query, request.query, history_dicts)
+    else:
+        query = request.query
 
     engine = get_query_engine(course_ids=request.course_ids, streaming=request.stream)
 
