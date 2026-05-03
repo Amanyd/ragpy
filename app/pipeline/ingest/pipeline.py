@@ -23,7 +23,7 @@ async def run_ingest(
     file_name: str,
     teacher_id: str,
 ) -> dict:
-    file_path = await load_file(bucket=bucket, key=key)
+    file_path = await load_file(bucket=bucket, key=key, filename=file_name)
     try:
         logger.info("ingest_start file_id=%s course_id=%s key=%s", file_id, course_id, key)
 
