@@ -51,16 +51,31 @@ async def _sse_generator(engine, query: str):
     try:
         # LlamaIndex async streaming query
         streaming_response = await engine.aquery(query)
+        logger.info("chat_sse response_type=%s has_async_gen=%s has_sync_gen=%s", 
+                    type(streaming_response).__name__,
+                    hasattr(streaming_response, "async_response_gen"),
+                    hasattr(streaming_response, "response_gen"))
 
-        if not hasattr(streaming_response, "async_response_gen"):
+        if hasattr(streaming_response, "async_response_gen"):
+            # Yield text chunks as SSE data frames.
+            token_count = 0
+            async for token in streaming_response.async_response_gen():
+                token_count += 1
+                frame = json.dumps({"token": token})
+                yield f"data: {frame}\n\n"
+            logger.info("chat_sse tokens_yielded=%d", token_count)
+        elif hasattr(streaming_response, "response_gen"):
+            # Fallback: some LlamaIndex versions use sync generator
+            token_count = 0
+            for token in streaming_response.response_gen:
+                token_count += 1
+                frame = json.dumps({"token": token})
+                yield f"data: {frame}\n\n"
+            logger.info("chat_sse tokens_yielded_sync=%d", token_count)
+        else:
             yield f"data: {json.dumps({'error': 'attempted SSE stream on non-streaming response'})}\n\n"
             yield "data: [DONE]\n\n"
             return
-
-        # Yield text chunks as SSE data frames.
-        async for token in streaming_response.async_response_gen():
-            frame = json.dumps({"token": token})
-            yield f"data: {frame}\n\n"
 
         # Yield citations as a final structured frame.
         citations = format_citations(streaming_response)

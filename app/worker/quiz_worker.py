@@ -9,7 +9,7 @@ from nats.js.api import ConsumerConfig
 
 from nats.aio.msg import Msg
 
-from app.messaging.client import get_js, get_nc
+from app.messaging.client import get_js
 from app.messaging.subjects import (
     DURABLE_QUIZ_WORKER,
     RAG_QUIZ_DONE_SUBJECT,
@@ -39,7 +39,7 @@ async def process_quiz_message(msg: Msg) -> None:
     difficulty: str = payload.get("difficulty", "medium")
     limit_chunks: int = int(payload.get("limit_chunks", 20))
 
-    nc = get_nc()
+    js = get_js()
 
     try:
         result = await generate_course_quiz(
@@ -54,7 +54,7 @@ async def process_quiz_message(msg: Msg) -> None:
             "difficulty": difficulty,
             "questions": json.loads(result.model_dump_json())["questions"],
         }
-        await nc.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
+        await js.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
         logger.info("quiz_done course_id=%s difficulty=%s questions=%d", course_id, difficulty, len(result.questions))
         await msg.ack()
 
@@ -66,7 +66,7 @@ async def process_quiz_message(msg: Msg) -> None:
             "difficulty": difficulty,
             "questions": [],
         }
-        await nc.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
+        await js.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
         await msg.nak(delay=5)
 
 
