@@ -6,6 +6,32 @@ from llama_index.core import Document
 
 logger = logging.getLogger(__name__)
 
+def _sanitize_text(text: str) -> str:
+    # Convert surrogate pairs to actual codepoints and drop isolated surrogates
+    # so downstream utf-8 encoding (e.g., llama_index hashing) never blows up.
+    return text.encode("utf-16", "surrogatepass").decode("utf-16", "ignore")
+
+
+def _sanitize_document(doc: Document) -> Document:
+    """Reconstruct a Document with sanitized text.
+
+    llama_index Document is a Pydantic model where ``text`` is a read-only
+    property backed by ``text_resource``.  Mutating ``doc.text`` directly
+    raises ``AttributeError: property 'text' of 'Document' object has no
+    setter``.  Reconstructing preserves all important fields while swapping
+    in clean text.
+    """
+    return Document(
+        id_=doc.id_,
+        text=_sanitize_text(doc.text),
+        metadata=doc.metadata,
+        embedding=doc.embedding,
+        excluded_embed_metadata_keys=doc.excluded_embed_metadata_keys,
+        excluded_llm_metadata_keys=doc.excluded_llm_metadata_keys,
+        relationships=doc.relationships,
+    )
+
+
 def _table_to_markdown(raw_rows: list[list[str]]) -> str:
     if not raw_rows:
         return ""
@@ -69,7 +95,7 @@ def parse_docx(file_path: Path) -> list[Document]:
         logger.warning("docx_empty file=%s", file_path.name)
         return []
 
-    text = "\n\n".join(parts)
+    text = _sanitize_text("\n\n".join(parts))
     logger.info("docx_parsed file=%s len=%d", file_path.name, len(text))
     return [Document(text=text)]
 
@@ -142,9 +168,9 @@ def parse_pptx(file_path: Path) -> list[Document]:
             )
             continue
 
-        full_text = f"Slide {i}:\n\n{content}"
+        full_text = _sanitize_text(f"Slide {i}:\n\n{content}")
         if notes:
-            full_text += f"\n\nSpeaker notes:\n{notes}"
+            full_text += _sanitize_text(f"\n\nSpeaker notes:\n{notes}")
 
         documents.append(Document(
             text=full_text,
@@ -161,10 +187,11 @@ def parse_pdf(file_path: Path) -> list[Document]:
     from llama_index.readers.file import PDFReader
 
     documents = PDFReader().load_data(file=file_path)
+    sanitized = [_sanitize_document(doc) for doc in documents]
     logger.info(
-        "pdf_parsed file=%s pages=%d", file_path.name, len(documents)
+        "pdf_parsed file=%s pages=%d", file_path.name, len(sanitized)
     )
-    return documents
+    return sanitized
 
 _PARSERS = {
     ".docx": parse_docx,
