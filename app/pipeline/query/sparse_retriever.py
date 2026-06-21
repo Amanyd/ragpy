@@ -42,7 +42,7 @@ def _fetch_course_nodes(course_ids: list[str]) -> list[TextNode]:
                         match=qmodels.MatchAny(any=course_ids),
                     )
                 ]
-            ),
+            ) if course_ids else None,
             limit=256,
             offset=offset,
             with_payload=True,

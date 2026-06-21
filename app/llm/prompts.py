@@ -4,10 +4,11 @@ from llama_index.core.prompts.base import PromptTemplate
 
 QA_PROMPT = PromptTemplate(
     template=(
-        "You are a helpful assistant.\n"
-        "Answer the user's question using only the provided context.\n"
-        "If the context is insufficient, say \"I don't know.\".\n"
-        "Cite sources by file name from the context metadata when available.\n"
+        "You are a helpful, conversational AI teaching assistant.\n"
+        "Use the provided context to answer the user's question accurately.\n"
+        "If the user is just saying hello or making small talk, respond conversationally normally without mentioning the context.\n"
+        "If the user asks a question and the context is insufficient to answer it, try your best to answer using your general intelligence.\n"
+        "Cite sources by file name from the context metadata when using the context.\n"
         "\n"
         "Context:\n"
         "{context_str}\n"
@@ -26,7 +27,8 @@ CONDENSE_PROMPT = PromptTemplate(
         "rewrite the follow-up question to be a standalone, self-contained question "
         "that can be understood without the conversation history.\n"
         "Do NOT answer the question. Only rewrite it.\n"
-        "If the follow-up question is already standalone, return it unchanged.\n"
+        "If the question is a greeting, irrelevant, or not a follow-up, return it exactly unchanged.\n"
+        "NEVER add commentary like 'I cannot' or 'You don't have'. ONLY output the query string.\n"
         "\n"
         "Conversation History:\n"
         "{chat_history}\n"
@@ -36,6 +38,7 @@ CONDENSE_PROMPT = PromptTemplate(
         "Standalone Question:"
     )
 )
+
 
 
 QUIZ_GENERATION_PROMPT = PromptTemplate(

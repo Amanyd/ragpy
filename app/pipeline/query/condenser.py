@@ -24,7 +24,7 @@ def _get_condenser_llm() -> Ollama:
         _condenser_llm = Ollama(
             model=settings.ollama_model,
             base_url=settings.ollama_base_url,
-            request_timeout=30.0,
+            request_timeout=120,
             additional_kwargs={"num_ctx": 2048},
         )
     return _condenser_llm

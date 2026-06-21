@@ -30,15 +30,31 @@ async def chat(request: ChatRequest):
 
     engine = get_query_engine(course_ids=request.course_ids, streaming=request.stream)
 
+    from llama_index.core.schema import QueryBundle
+    
+    # Check if we have context. If not, fallback to general intelligence.
+    nodes = await engine.aretrieve(QueryBundle(query))
+    if not nodes:
+        from app.llm.factory import get_llm
+        llm = get_llm()
+        if request.stream:
+            return StreamingResponse(
+                _fallback_sse_generator(llm, query),
+                media_type="text/event-stream",
+                headers={"X-Accel-Buffering": "no"},
+            )
+        resp = await llm.acomplete(query)
+        return ChatResponse(answer=resp.text, citations=[])
+
     if request.stream:
         return StreamingResponse(
-            _sse_generator(engine, query),
+            _sse_generator(engine, query, nodes),
             media_type="text/event-stream",
             headers={"X-Accel-Buffering": "no"},
         )
 
-    # Non-streaming: call async aquery and return JSON.
-    response = await engine.aquery(query)
+    # Non-streaming: call async asynthesize and return JSON.
+    response = await engine.asynthesize(query_bundle=QueryBundle(query), nodes=nodes)
     citations = format_citations(response)
     return ChatResponse(
         answer=str(response),
@@ -46,11 +62,12 @@ async def chat(request: ChatRequest):
     )
 
 
-async def _sse_generator(engine, query: str):
+async def _sse_generator(engine, query: str, nodes: list):
     """Async generator yielding SSE frames for a streaming LlamaIndex query."""
     try:
-        # LlamaIndex async streaming query
-        streaming_response = await engine.aquery(query)
+        from llama_index.core.schema import QueryBundle
+        # Use asynthesize with pre-retrieved nodes to avoid double-retrieval
+        streaming_response = await engine.asynthesize(query_bundle=QueryBundle(query), nodes=nodes)
         logger.info("chat_sse response_type=%s has_async_gen=%s has_sync_gen=%s", 
                     type(streaming_response).__name__,
                     hasattr(streaming_response, "async_response_gen"),
@@ -84,6 +101,26 @@ async def _sse_generator(engine, query: str):
 
     except Exception:
         logger.exception("chat_stream_error query=%s", query[:80])
+        yield f"data: {json.dumps({'error': 'stream failed'})}\n\n"
+        yield "data: [DONE]\n\n"
+
+
+async def _fallback_sse_generator(llm, query: str):
+    """Async generator yielding SSE frames for a direct LLM fallback query."""
+    try:
+        streaming_response = await llm.astream_complete(query)
+        token_count = 0
+        async for chunk in streaming_response:
+            token_count += 1
+            frame = json.dumps({"token": chunk.delta})
+            yield f"data: {frame}\n\n"
+        logger.info("chat_sse_fallback tokens_yielded=%d", token_count)
+        
+        # Yield empty citations
+        yield f"data: {json.dumps({'citations': []})}\n\n"
+        yield "data: [DONE]\n\n"
+    except Exception:
+        logger.exception("chat_fallback_stream_error query=%s", query[:80])
         yield f"data: {json.dumps({'error': 'stream failed'})}\n\n"
         yield "data: [DONE]\n\n"
 

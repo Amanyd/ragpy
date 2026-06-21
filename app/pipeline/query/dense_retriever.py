@@ -12,8 +12,12 @@ def get_retriever(course_ids: list[str], top_k: int | None = None) -> BaseRetrie
         top_k = settings.retrieval_top_k
     vector_store = get_vector_store()
     index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
-    filters = MetadataFilters(
-        filters=[MetadataFilter(key="course_id", operator=FilterOperator.IN, value=course_ids)]
-    )
+    
+    # Only apply the filter if course_ids has items
+    filters = None
+    if course_ids:
+        filters = MetadataFilters(
+            filters=[MetadataFilter(key="course_id", operator=FilterOperator.IN, value=course_ids)]
+        )
+        
     return index.as_retriever(similarity_top_k=top_k, filters=filters)
-
