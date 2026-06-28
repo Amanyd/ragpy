@@ -85,10 +85,12 @@ def _stratified_sample(nodes: list[TextNode], budget: int) -> list[TextNode]:
         key = node.metadata.get("file_name", "__unknown__")
         by_file[key].append(node)
 
-    file_keys = sorted(by_file.keys())
+    file_keys = list(by_file.keys())
     num_files = len(file_keys)
     if num_files == 0:
         return []
+
+    random.shuffle(file_keys)
 
     # Shuffle within each file so we pick diverse chunks (not just the first N)
     for key in file_keys:
@@ -132,7 +134,6 @@ async def generate_course_quiz(
     # Stratified sample so every file is represented
     sampled_nodes = _stratified_sample(all_nodes, budget=limit_chunks)
 
-    enriched_nodes = await extract_qa_pairs(sampled_nodes)
-    result = await format_quiz(enriched_nodes, course_id, difficulty=difficulty)
+    result = await format_quiz(sampled_nodes, course_id, difficulty=difficulty)
     logger.info("quiz_done course_id=%s questions=%d", course_id, len(result.questions))
     return result

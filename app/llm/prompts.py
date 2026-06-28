@@ -57,7 +57,7 @@ CONDENSE_PROMPT = PromptTemplate(
 QUIZ_GENERATION_PROMPT = PromptTemplate(
     template=(
         "You generate quizzes from the provided context only.\n"
-        "Do not use outside knowledge. If the context is insufficient, output an empty questions list.\n"
+        "Do use outside knowledge, If the context is insufficient.\n"
         "\n"
         "Difficulty level: {difficulty}\n"
         "- easy: Basic recall and definition questions. Straightforward single-concept answers.\n"
@@ -65,8 +65,8 @@ QUIZ_GENERATION_PROMPT = PromptTemplate(
         "- hard: Analysis and synthesis questions. Requires deep understanding and multi-step reasoning.\n"
         "\n"
         "Requirements:\n"
-        "- Generate approximately 10 questions total.\n"
-        "- About 70%% must be multiple-choice (type: \"mcq\") and about 30%% open-ended (type: \"open_ended\").\n"
+        "- Generate Exactly 12 questions total.\n"
+        "- 9 must be multiple-choice (type: \"mcq\") and 3 open-ended (type: \"open_ended\").\n"
         "- For mcq questions: provide exactly 4 choices labeled \"A\", \"B\", \"C\", \"D\". "
         "Each choice has a \"label\" and a \"text\". Exactly one choice is correct. "
         "Set \"answer\" to the correct choice's label (e.g. \"A\").\n"

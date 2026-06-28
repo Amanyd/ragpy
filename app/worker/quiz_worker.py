@@ -67,7 +67,7 @@ async def process_quiz_message(msg: Msg) -> None:
             "questions": [],
         }
         await js.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
-        await msg.nak(delay=5)
+        await msg.ack()
 
 
 async def start_quiz_worker() -> None:
