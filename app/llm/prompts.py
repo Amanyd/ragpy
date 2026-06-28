@@ -64,10 +64,48 @@ QUIZ_GENERATION_PROMPT = PromptTemplate(
         "- medium: Application and understanding questions. May require connecting two concepts.\n"
         "- hard: Analysis and synthesis questions. Requires deep understanding and multi-step reasoning.\n"
         "\n"
-        "Return valid JSON only (no markdown) that matches the expected schema exactly.\n"
+        "Requirements:\n"
+        "- Generate approximately 10 questions total.\n"
+        "- About 70%% must be multiple-choice (type: \"mcq\") and about 30%% open-ended (type: \"open_ended\").\n"
+        "- For mcq questions: provide exactly 4 choices labeled \"A\", \"B\", \"C\", \"D\". "
+        "Each choice has a \"label\" and a \"text\". Exactly one choice is correct. "
+        "Set \"answer\" to the correct choice's label (e.g. \"A\").\n"
+        "- For open_ended questions: set \"choices\" to null. "
+        "Set \"answer\" to a concise reference answer that captures the key point.\n"
+        "- Vary question types across easy, medium, and hard difficulty.\n"
+        "- Return valid JSON only (no markdown) that matches the expected schema exactly.\n"
+        "\n"
+        "Example output:\n"
+        '{"questions": [\n'
+        '  {"type": "mcq", "question": "What is X?", "choices": [\n'
+        '    {"label": "A", "text": "option 1"}, {"label": "B", "text": "option 2"},\n'
+        '    {"label": "C", "text": "option 3"}, {"label": "D", "text": "option 4"}\n'
+        '  ], "answer": "B"},\n'
+        '  {"type": "open_ended", "question": "Explain Y.", "choices": null, "answer": "Y is ..."}\n'
+        ']}\n'
         "\n"
         "Context:\n"
         "{context_str}\n"
+        "\n"
+        "Output JSON:\n"
+    )
+)
+
+
+QUIZ_GRADING_PROMPT = PromptTemplate(
+    template=(
+        "You are grading a student's answer to a quiz question.\n"
+        "Determine if the student's answer is semantically correct, even if phrased differently.\n"
+        "Tolerate paraphrasing, synonyms, and minor inaccuracies as long as the core meaning is correct.\n"
+        "\n"
+        "Question: {question}\n"
+        "Reference answer: {reference_answer}\n"
+        "Student's answer: {user_answer}\n"
+        "\n"
+        "Return valid JSON only (no markdown) that matches the expected schema exactly.\n"
+        "Set is_correct to true if the student's answer captures the key meaning, false otherwise.\n"
+        "Set score to a value between 0.0 and 1.0 reflecting how correct the answer is.\n"
+        "Set explanation to a brief justification of your grading decision.\n"
         "\n"
         "Output JSON:\n"
     )
