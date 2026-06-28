@@ -5,10 +5,11 @@ import logging
 from typing import Literal
 
 from llama_index.core.schema import BaseNode
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from app.llm.factory import get_llm
 from app.llm.prompts import QUIZ_GENERATION_PROMPT
+from app.llm.structured import astructured_predict_json
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +29,20 @@ class QuizQuestion(BaseModel):
     choices: list[QuizChoice] | None = None
     answer: str
 
+    @model_validator(mode="after")
+    def validate_choices(self) -> "QuizQuestion":
+        if self.type == "mcq":
+            if not self.choices or len(self.choices) < 2:
+                raise ValueError("MCQ question must have at least 2 choices")
+        elif self.type == "open_ended":
+            pass
+        return self
+
 
 class QuizOutput(BaseModel):
     """Structured quiz output for a course."""
 
-    course_id: str
+    course_id: str = ""
     questions: list[QuizQuestion]
 
 
@@ -50,8 +60,11 @@ async def format_quiz(nodes: list[BaseNode], course_id: str, difficulty: str = "
     context_str = "\n\n---\n\n".join(context_parts)
 
     llm = get_llm()
-    # astructured_predict injects schema automatically; prompt_args fill template vars.
-    result: QuizOutput = await llm.astructured_predict(
+    # sglang doesn't return OpenAI tool_calls, so we use JSON-constrained
+    # decoding (response_format json_object) + Pydantic validation instead of
+    # astructured_predict (which uses function calling and fails here).
+    result: QuizOutput = await astructured_predict_json(
+        llm,
         QuizOutput,
         QUIZ_GENERATION_PROMPT,
         context_str=context_str,
