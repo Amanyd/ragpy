@@ -16,6 +16,7 @@ def get_llm() -> OpenAILike:
             is_chat_model=True,
             request_timeout=600.0,
             max_tokens=8192,
+            context_window=32768,
             temperature=0.7
         )
     return _llm
