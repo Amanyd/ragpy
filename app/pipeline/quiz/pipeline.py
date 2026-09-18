@@ -143,9 +143,12 @@ async def generate_course_quiz(
         else:
             lesson_nodes = all_nodes
 
-        # Extract keywords from the lesson nodes
-        from app.pipeline.quiz.extractor import extract_keywords_from_nodes
-        keywords = await extract_keywords_from_nodes(lesson_nodes)
+        # Extract keywords from the lesson nodes ONLY if it's a DOCX file
+        if lesson_nodes and lesson_nodes[0].metadata.get("file_name", "").endswith(".docx"):
+            from app.pipeline.quiz.extractor import extract_keywords_from_nodes
+            keywords = await extract_keywords_from_nodes(lesson_nodes)
+        else:
+            logger.info("Skipping keyword extraction because file is not a DOCX")
         
         # Sample nodes for the quiz
         sampled_nodes = _stratified_sample(lesson_nodes, budget=limit_chunks)
