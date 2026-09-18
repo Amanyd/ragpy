@@ -52,11 +52,16 @@ async def extract_keywords_from_nodes(nodes: list[BaseNode]) -> list[str]:
     context_parts = [node.text for node in nodes if node.text]
     context_str = "\n\n---\n\n".join(context_parts)
     
+    # Truncate to roughly ~10,000 tokens (40,000 chars) to comfortably fit in the 32k context limit
+    if len(context_str) > 40000:
+        context_str = context_str[:40000] + "\n...[TRUNCATED]"
+    
     prompt = PromptTemplate(
         "You are a curriculum expert. Read the following lesson plan. "
         "Ignore administrative details (creator, date, boilerplate). "
         "Extract ONLY the core educational topics, learning objectives, and key concepts.\n"
-        "Output the result as a valid JSON object.\n\n"
+        "Output the result as a valid JSON object with a single key \"keywords\" containing a list of strings.\n"
+        "Example: {{\"keywords\": [\"keyword 1\", \"keyword 2\"]}}\n\n"
         "Lesson Plan:\n{context_str}"
     )
     
