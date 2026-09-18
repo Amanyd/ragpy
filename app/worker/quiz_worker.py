@@ -4,10 +4,10 @@
 import asyncio
 import json
 import logging
-import nats.errors
-from nats.js.api import ConsumerConfig
 
+import nats.errors
 from nats.aio.msg import Msg
+from nats.js.api import ConsumerConfig
 
 from app.messaging.client import get_js
 from app.messaging.subjects import (
@@ -21,53 +21,70 @@ from app.pipeline.quiz.pipeline import generate_course_quiz
 logger = logging.getLogger(__name__)
 
 
-async def process_quiz_message(msg: Msg) -> None:
+async def process_quiz_message(msg: Msg, sem: asyncio.Semaphore) -> None:
     """Parse, validate, and process a single quiz generation message."""
-    try:
-        payload = json.loads(msg.data.decode())
-    except Exception:
-        logger.exception("quiz_msg invalid json subject=%s", msg.subject)
-        await msg.term()
-        return
+    async with sem:
+        try:
+            payload = json.loads(msg.data.decode())
+        except Exception:
+            logger.exception("quiz_msg invalid json subject=%s", msg.subject)
+            await msg.term()
+            return
 
-    course_id: str | None = payload.get("course_id")
-    if not course_id:
-        logger.error("quiz_msg missing course_id subject=%s", msg.subject)
-        await msg.term()
-        return
+        quiz_type: str | None = payload.get("type")
+        course_id: str | None = payload.get("course_id")
+        lesson_id: str | None = payload.get("lesson_id")
+        file_id: str | None = payload.get("file_id")
+        keywords: list[str] = payload.get("keywords", [])
+        
+        if not course_id or not quiz_type:
+            logger.error("quiz_msg missing required fields subject=%s", msg.subject)
+            await msg.term()
+            return
 
-    difficulty: str = payload.get("difficulty", "medium")
-    limit_chunks: int = int(payload.get("limit_chunks", 20))
+        difficulty: str = payload.get("difficulty", "medium")
+        limit_chunks: int = int(payload.get("limit_chunks", 20))
 
-    js = get_js()
+        js = get_js()
 
-    try:
-        result = await generate_course_quiz(
-            course_id=course_id,
-            difficulty=difficulty,
-            limit_chunks=limit_chunks,
-        )
+        try:
+            # Reusing generate_course_quiz name but updating its internals in pipeline.py
+            result, extracted_keywords = await generate_course_quiz(
+                quiz_type=quiz_type,
+                course_id=course_id,
+                lesson_id=lesson_id,
+                file_id=file_id,
+                keywords=keywords,
+                difficulty=difficulty,
+                limit_chunks=limit_chunks,
+            )
 
-        done_payload = {
-            "status": "success",
-            "course_id": course_id,
-            "difficulty": difficulty,
-            "questions": json.loads(result.model_dump_json())["questions"],
-        }
-        await js.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
-        logger.info("quiz_done course_id=%s difficulty=%s questions=%d", course_id, difficulty, len(result.questions))
-        await msg.ack()
+            done_payload = {
+                "type": quiz_type,
+                "status": "success",
+                "course_id": course_id,
+                "lesson_id": lesson_id,
+                "difficulty": difficulty,
+                "keywords": extracted_keywords,
+                "questions": json.loads(result.model_dump_json())["questions"],
+            }
+            await js.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
+            logger.info("quiz_done type=%s course_id=%s difficulty=%s questions=%d", quiz_type, course_id, difficulty, len(result.questions))
+            await msg.ack()
 
-    except Exception:
-        logger.exception("quiz_failed course_id=%s difficulty=%s", course_id, difficulty)
-        done_payload = {
-            "status": "failed",
-            "course_id": course_id,
-            "difficulty": difficulty,
-            "questions": [],
-        }
-        await js.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
-        await msg.ack()
+        except Exception:
+            logger.exception("quiz_failed type=%s course_id=%s difficulty=%s", quiz_type, course_id, difficulty)
+            done_payload = {
+                "type": quiz_type,
+                "status": "failed",
+                "course_id": course_id,
+                "lesson_id": lesson_id,
+                "difficulty": difficulty,
+                "questions": [],
+            }
+            await js.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
+            # Nack with a delay to retry on failure instead of acking
+            await msg.nak(delay=30.0)
 
 
 async def start_quiz_worker() -> None:
@@ -81,11 +98,14 @@ async def start_quiz_worker() -> None:
     )
     logger.info("quiz_worker pull_subscribe registered subject=%s", RAG_QUIZ_PUBLISH_SUBJECT)
 
+    sem = asyncio.Semaphore(8)
+
     while True:
         try:
-            msgs = await psub.fetch(batch=5, timeout=1.0)
+            # Fetch up to 8 messages at once
+            msgs = await psub.fetch(batch=8, timeout=1.0)
             for msg in msgs:
-                await process_quiz_message(msg)
+                asyncio.create_task(process_quiz_message(msg, sem))
         except nats.errors.TimeoutError:
             continue
         except Exception as e:

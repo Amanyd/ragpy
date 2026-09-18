@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Depends
 
 from app.api.deps import verify_internal_token
-from app.api.v1 import chat, health, ingest, quiz, audio
+from app.api.v1 import audio, chat, health, ingest, quiz
 
 api_router = APIRouter(prefix="/api/v1")
 

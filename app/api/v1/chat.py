@@ -1,11 +1,10 @@
 """Chat endpoint — supports both streaming SSE and non-streaming JSON."""
 
 
-import asyncio
 import json
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from app.api.schemas.chat import ChatRequest, ChatResponse, CitationItem

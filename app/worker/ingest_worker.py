@@ -4,10 +4,10 @@
 import asyncio
 import json
 import logging
-import nats.errors
-from nats.js.api import ConsumerConfig
 
+import nats.errors
 from nats.aio.msg import Msg
+from nats.js.api import ConsumerConfig
 
 from app.messaging.client import get_js
 from app.messaging.subjects import (

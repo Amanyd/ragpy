@@ -1,9 +1,7 @@
 """Extract Q&A pairs from document nodes using QuestionsAnsweredExtractor."""
 
 
-import asyncio
 import logging
-
 
 from llama_index.core.extractors import QuestionsAnsweredExtractor
 from llama_index.core.schema import BaseNode
@@ -35,3 +33,41 @@ async def extract_qa_pairs(
 
     logger.info("qa_extraction nodes=%d questions_each=%d", len(nodes), questions_per_chunk)
     return nodes
+
+
+from pydantic import BaseModel
+
+from app.llm.structured import astructured_predict_json
+
+
+class KeywordExtraction(BaseModel):
+    keywords: list[str]
+
+async def extract_keywords_from_nodes(nodes: list[BaseNode]) -> list[str]:
+    """Extract syllabus keywords from lesson plan nodes."""
+    if not nodes:
+        return []
+
+    context_parts = [node.text for node in nodes if node.text]
+    context_str = "\n\n---\n\n".join(context_parts)
+    
+    prompt = (
+        "You are a curriculum expert. Read the following lesson plan. "
+        "Ignore administrative details (creator, date, boilerplate). "
+        "Extract ONLY the core educational topics, learning objectives, and key concepts.\n\n"
+        "Lesson Plan:\n{context_str}"
+    )
+    
+    try:
+        llm = get_llm()
+        result = await astructured_predict_json(
+            llm,
+            KeywordExtraction,
+            prompt,
+            context_str=context_str,
+        )
+        logger.info("keywords_extracted count=%d", len(result.keywords))
+        return result.keywords
+    except Exception as e:
+        logger.error("failed to extract keywords: %s", e)
+        return []

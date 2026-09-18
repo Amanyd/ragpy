@@ -5,7 +5,6 @@ import logging
 
 from fastapi import APIRouter, HTTPException, status
 
-
 from app.api.schemas.ingest import IngestRequest, IngestResponse
 from app.messaging.client import get_js
 from app.messaging.subjects import RAG_INGEST_PUBLISH_SUBJECT

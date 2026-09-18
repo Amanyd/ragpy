@@ -14,10 +14,9 @@ from collections import defaultdict
 from llama_index.core.schema import TextNode
 from qdrant_client.http import models as qdrant_models
 
-from app.pipeline.quiz.extractor import extract_qa_pairs
+from app.config.settings import settings
 from app.pipeline.quiz.formatter import QuizOutput, format_quiz
 from app.store.qdrant import get_sync_client
-from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -118,22 +117,51 @@ def _stratified_sample(nodes: list[TextNode], budget: int) -> list[TextNode]:
 
 
 async def generate_course_quiz(
+    quiz_type: str,
     course_id: str,
+    lesson_id: str | None = None,
+    file_id: str | None = None,
+    keywords: list[str] = None,
     difficulty: str = "medium",
     limit_chunks: int = 20,
-) -> QuizOutput:
-    """Fetch ALL course nodes, stratified-sample across files, generate quiz."""
-    logger.info("quiz_generate course_id=%s limit=%d", course_id, limit_chunks)
+) -> tuple[QuizOutput, list[str]]:
+    """Generate a quiz and optionally extract keywords for lessons."""
+    logger.info("quiz_generate type=%s course_id=%s limit=%d", quiz_type, course_id, limit_chunks)
 
     all_nodes = await asyncio.to_thread(_scroll_all_nodes, course_id)
 
     if not all_nodes:
         logger.warning("no nodes found course_id=%s", course_id)
-        return QuizOutput(course_id=course_id, questions=[])
+        return QuizOutput(course_id=course_id, questions=[]), []
 
-    # Stratified sample so every file is represented
-    sampled_nodes = _stratified_sample(all_nodes, budget=limit_chunks)
+    keywords = []
+    
+    if quiz_type == "lesson":
+        # For lesson quizzes, we only want chunks from this specific file.
+        if file_id:
+            lesson_nodes = [n for n in all_nodes if n.metadata.get("file_id") == file_id]
+        else:
+            lesson_nodes = all_nodes
+
+        # Extract keywords from the lesson nodes
+        from app.pipeline.quiz.extractor import extract_keywords_from_nodes
+        keywords = await extract_keywords_from_nodes(lesson_nodes)
+        
+        # Sample nodes for the quiz
+        sampled_nodes = _stratified_sample(lesson_nodes, budget=limit_chunks)
+    else:
+        if keywords:
+            # Course quiz: Use HybridRetriever to find chunks matching the keywords
+            from app.pipeline.query.full_retriever import HybridRetriever
+            retriever = HybridRetriever(course_ids=[course_id], top_k=limit_chunks)
+            query_str = " ".join(keywords)
+            nodes_with_score = await asyncio.to_thread(retriever.retrieve, query_str)
+            sampled_nodes = [n.node for n in nodes_with_score]
+            logger.info("quiz_semantic_search keywords=%d retrieved=%d", len(keywords), len(sampled_nodes))
+        else:
+            # Course quiz: stratified sample across all files
+            sampled_nodes = _stratified_sample(all_nodes, budget=limit_chunks)
 
     result = await format_quiz(sampled_nodes, course_id, difficulty=difficulty)
-    logger.info("quiz_done course_id=%s questions=%d", course_id, len(result.questions))
-    return result
+    logger.info("quiz_done type=%s course_id=%s questions=%d keywords=%d", quiz_type, course_id, len(result.questions), len(keywords))
+    return result, keywords

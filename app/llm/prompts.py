@@ -1,7 +1,6 @@
 
 from llama_index.core.prompts.base import PromptTemplate
 
-
 QA_PROMPT = PromptTemplate(
     template=(
         "You are a professional instructor at a Naval Aviation Institute — "

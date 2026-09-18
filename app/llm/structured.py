@@ -10,7 +10,7 @@ The prompt MUST contain the word "JSON" for sglang's json_object mode to work.
 """
 
 import logging
-from typing import Type, TypeVar
+from typing import TypeVar
 
 from llama_index.core.llms import LLM
 from llama_index.core.prompts.base import PromptTemplate
@@ -23,7 +23,7 @@ Model = TypeVar("Model", bound=BaseModel)
 
 async def astructured_predict_json(
     llm: LLM,
-    output_cls: Type[Model],
+    output_cls: type[Model],
     prompt: PromptTemplate,
     **prompt_args: object,
 ) -> Model:
