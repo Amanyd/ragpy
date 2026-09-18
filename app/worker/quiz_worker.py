@@ -83,8 +83,8 @@ async def process_quiz_message(msg: Msg, sem: asyncio.Semaphore) -> None:
                 "questions": [],
             }
             await js.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
-            # Nack with a delay to retry on failure instead of acking
-            await msg.nak(delay=30.0)
+            # Acknowledge the message since we've permanently failed and notified the backend
+            await msg.ack()
 
 
 async def start_quiz_worker() -> None:

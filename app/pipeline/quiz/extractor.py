@@ -35,6 +35,7 @@ async def extract_qa_pairs(
     return nodes
 
 
+from llama_index.core.prompts.base import PromptTemplate
 from pydantic import BaseModel
 
 from app.llm.structured import astructured_predict_json
@@ -51,10 +52,11 @@ async def extract_keywords_from_nodes(nodes: list[BaseNode]) -> list[str]:
     context_parts = [node.text for node in nodes if node.text]
     context_str = "\n\n---\n\n".join(context_parts)
     
-    prompt = (
+    prompt = PromptTemplate(
         "You are a curriculum expert. Read the following lesson plan. "
         "Ignore administrative details (creator, date, boilerplate). "
-        "Extract ONLY the core educational topics, learning objectives, and key concepts.\n\n"
+        "Extract ONLY the core educational topics, learning objectives, and key concepts.\n"
+        "Output the result as a valid JSON object.\n\n"
         "Lesson Plan:\n{context_str}"
     )
     
