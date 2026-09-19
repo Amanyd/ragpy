@@ -134,7 +134,7 @@ async def generate_course_quiz(
         logger.warning("no nodes found course_id=%s", course_id)
         return QuizOutput(course_id=course_id, questions=[]), []
 
-    keywords = []
+    extracted_keywords = []
     
     if quiz_type == "lesson":
         # For lesson quizzes, we only want chunks from this specific file.
@@ -146,34 +146,54 @@ async def generate_course_quiz(
         # Extract keywords from the lesson nodes ONLY if it's a DOCX file
         if lesson_nodes and lesson_nodes[0].metadata.get("file_name", "").endswith(".docx"):
             from app.pipeline.quiz.extractor import extract_keywords_from_nodes
-            keywords = await extract_keywords_from_nodes(lesson_nodes)
+            extracted_keywords = await extract_keywords_from_nodes(lesson_nodes)
         else:
             logger.info("Skipping keyword extraction because file is not a DOCX")
         
         # Now use HybridRetriever to search the ENTIRE course using these keywords!
-        if keywords:
+        if extracted_keywords:
             from app.pipeline.query.full_retriever import HybridRetriever
-            retriever = HybridRetriever(course_ids=[course_id], top_k=limit_chunks)
-            query_str = " ".join(keywords)
+            from app.pipeline.query.reranker import get_reranker
+            from llama_index.core import QueryBundle
+            
+            retriever = HybridRetriever(course_ids=[course_id], top_k=100)
+            query_str = " ".join(extracted_keywords)
             nodes_with_score = await asyncio.to_thread(retriever.retrieve, query_str)
-            sampled_nodes = [n.node for n in nodes_with_score]
-            logger.info("quiz_semantic_search lesson keywords=%d retrieved=%d", len(keywords), len(sampled_nodes))
+            
+            reranker = get_reranker(top_n=15)
+            reranked_nodes = await asyncio.to_thread(
+                reranker.postprocess_nodes, nodes_with_score, QueryBundle(query_str)
+            )
+            sampled_nodes = [n.node for n in reranked_nodes]
+            logger.info("quiz_semantic_search lesson keywords=%d retrieved=%d reranked=%d", len(extracted_keywords), len(nodes_with_score), len(sampled_nodes))
         else:
             # Fallback if no keywords: just use the lesson's specific nodes
             sampled_nodes = _stratified_sample(lesson_nodes, budget=limit_chunks)
+            
+        keywords_to_return = extracted_keywords
     else:
         if keywords:
             # Course quiz: Use HybridRetriever to find chunks matching the keywords
             from app.pipeline.query.full_retriever import HybridRetriever
-            retriever = HybridRetriever(course_ids=[course_id], top_k=limit_chunks)
+            from app.pipeline.query.reranker import get_reranker
+            from llama_index.core import QueryBundle
+            
+            retriever = HybridRetriever(course_ids=[course_id], top_k=100)
             query_str = " ".join(keywords)
             nodes_with_score = await asyncio.to_thread(retriever.retrieve, query_str)
-            sampled_nodes = [n.node for n in nodes_with_score]
-            logger.info("quiz_semantic_search keywords=%d retrieved=%d", len(keywords), len(sampled_nodes))
+            
+            reranker = get_reranker(top_n=15)
+            reranked_nodes = await asyncio.to_thread(
+                reranker.postprocess_nodes, nodes_with_score, QueryBundle(query_str)
+            )
+            sampled_nodes = [n.node for n in reranked_nodes]
+            logger.info("quiz_semantic_search keywords=%d retrieved=%d reranked=%d", len(keywords), len(nodes_with_score), len(sampled_nodes))
         else:
             # Course quiz: stratified sample across all files
             sampled_nodes = _stratified_sample(all_nodes, budget=limit_chunks)
+            
+        keywords_to_return = keywords or []
 
     result = await format_quiz(sampled_nodes, course_id, difficulty=difficulty, quiz_type=quiz_type)
-    logger.info("quiz_done type=%s course_id=%s questions=%d keywords=%d", quiz_type, course_id, len(result.questions), len(keywords))
-    return result, keywords
+    logger.info("quiz_done type=%s course_id=%s questions=%d keywords=%d", quiz_type, course_id, len(result.questions), len(keywords_to_return))
+    return result, keywords_to_return

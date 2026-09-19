@@ -98,12 +98,12 @@ async def start_quiz_worker() -> None:
     )
     logger.info("quiz_worker pull_subscribe registered subject=%s", RAG_QUIZ_PUBLISH_SUBJECT)
 
-    sem = asyncio.Semaphore(8)
+    sem = asyncio.Semaphore(3)
 
     while True:
         try:
-            # Fetch up to 8 messages at once
-            msgs = await psub.fetch(batch=8, timeout=1.0)
+            # Fetch up to 3 messages at once
+            msgs = await psub.fetch(batch=3, timeout=1.0)
             for msg in msgs:
                 asyncio.create_task(process_quiz_message(msg, sem))
         except nats.errors.TimeoutError:
