@@ -57,12 +57,6 @@ QUIZ_GENERATION_PROMPT = PromptTemplate(
     template=(
         "You generate quizzes from the provided context only.\n"
         "Do use outside knowledge, If the context is insufficient.\n"
-        "\n"
-        "Difficulty level: {difficulty}\n"
-        "- easy: Basic recall and definition questions. Straightforward single-concept answers.\n"
-        "- medium: Application and understanding questions. May require connecting two concepts.\n"
-        "- hard: Analysis and synthesis questions. Requires deep understanding and multi-step reasoning.\n"
-        "\n"
         "Requirements:\n"
         "{requirements}\n"
         "- For mcq questions: provide exactly 4 choices labeled \"A\", \"B\", \"C\", \"D\". "

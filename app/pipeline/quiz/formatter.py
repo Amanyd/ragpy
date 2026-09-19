@@ -66,6 +66,10 @@ async def format_quiz(nodes: list[BaseNode], course_id: str, difficulty: str = "
         )
     else:
         requirements = (
+            f"Difficulty level: {difficulty}\n"
+            "- easy: Basic recall and definition questions. Straightforward single-concept answers.\n"
+            "- medium: Application and understanding questions. May require connecting two concepts.\n"
+            "- hard: Analysis and synthesis questions. Requires deep understanding and multi-step reasoning.\n"
             "- Generate Exactly 10 questions total.\n"
             "- 8 must be multiple-choice (type: \"mcq\") and 2 open-ended (type: \"open_ended\").\n"
         )
@@ -79,7 +83,6 @@ async def format_quiz(nodes: list[BaseNode], course_id: str, difficulty: str = "
         QuizOutput,
         QUIZ_GENERATION_PROMPT,
         context_str=context_str,
-        difficulty=difficulty,
         requirements=requirements,
     )
 
