@@ -150,8 +150,17 @@ async def generate_course_quiz(
         else:
             logger.info("Skipping keyword extraction because file is not a DOCX")
         
-        # Sample nodes for the quiz
-        sampled_nodes = _stratified_sample(lesson_nodes, budget=limit_chunks)
+        # Now use HybridRetriever to search the ENTIRE course using these keywords!
+        if keywords:
+            from app.pipeline.query.full_retriever import HybridRetriever
+            retriever = HybridRetriever(course_ids=[course_id], top_k=limit_chunks)
+            query_str = " ".join(keywords)
+            nodes_with_score = await asyncio.to_thread(retriever.retrieve, query_str)
+            sampled_nodes = [n.node for n in nodes_with_score]
+            logger.info("quiz_semantic_search lesson keywords=%d retrieved=%d", len(keywords), len(sampled_nodes))
+        else:
+            # Fallback if no keywords: just use the lesson's specific nodes
+            sampled_nodes = _stratified_sample(lesson_nodes, budget=limit_chunks)
     else:
         if keywords:
             # Course quiz: Use HybridRetriever to find chunks matching the keywords
