@@ -4,7 +4,7 @@ import logging
 from fastapi import APIRouter
 from qdrant_client import models
 
-from app.store.qdrant import get_client
+from app.store.qdrant import _get_aclient
 from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -16,11 +16,11 @@ async def delete_course_data(course_id: str):
     """Delete all vector embeddings for a given course."""
     logger.info("Deleting qdrant data for course_id=%s", course_id)
     
-    client = get_client()
+    client = _get_aclient()
     
     try:
         await client.delete(
-            collection_name=settings.qdrant_collection,
+            collection_name=settings.qdrant_collection_name,
             points_selector=models.Filter(
                 must=[
                     models.FieldCondition(
