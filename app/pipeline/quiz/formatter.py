@@ -46,7 +46,7 @@ class QuizOutput(BaseModel):
     questions: list[QuizQuestion]
 
 
-async def format_quiz(nodes: list[BaseNode], course_id: str, difficulty: str = "medium") -> QuizOutput:
+async def format_quiz(nodes: list[BaseNode], course_id: str, difficulty: str = "medium", quiz_type: str = "course") -> QuizOutput:
     """Call LLM with structured prediction to produce a QuizOutput from nodes."""
     context_parts: list[str] = []
     for node in nodes:
@@ -59,6 +59,17 @@ async def format_quiz(nodes: list[BaseNode], course_id: str, difficulty: str = "
 
     context_str = "\n\n---\n\n".join(context_parts)
 
+    if quiz_type == "lesson":
+        requirements = (
+            "- Generate Exactly 5 questions total.\n"
+            "- All 5 questions must be multiple-choice (type: \"mcq\"). Do not generate any open_ended questions.\n"
+        )
+    else:
+        requirements = (
+            "- Generate Exactly 10 questions total.\n"
+            "- 8 must be multiple-choice (type: \"mcq\") and 2 open-ended (type: \"open_ended\").\n"
+        )
+
     llm = get_llm()
     # sglang doesn't return OpenAI tool_calls, so we use JSON-constrained
     # decoding (response_format json_object) + Pydantic validation instead of
@@ -69,6 +80,7 @@ async def format_quiz(nodes: list[BaseNode], course_id: str, difficulty: str = "
         QUIZ_GENERATION_PROMPT,
         context_str=context_str,
         difficulty=difficulty,
+        requirements=requirements,
     )
 
     # Stamp course_id on the result (LLM may not know it).

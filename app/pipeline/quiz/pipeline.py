@@ -165,6 +165,6 @@ async def generate_course_quiz(
             # Course quiz: stratified sample across all files
             sampled_nodes = _stratified_sample(all_nodes, budget=limit_chunks)
 
-    result = await format_quiz(sampled_nodes, course_id, difficulty=difficulty)
+    result = await format_quiz(sampled_nodes, course_id, difficulty=difficulty, quiz_type=quiz_type)
     logger.info("quiz_done type=%s course_id=%s questions=%d keywords=%d", quiz_type, course_id, len(result.questions), len(keywords))
     return result, keywords
