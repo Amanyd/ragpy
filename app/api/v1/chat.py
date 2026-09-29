@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.post("", tags=["chat"])
 @router.post("/", tags=["chat"])
 async def chat(request: ChatRequest):
     """Answer a student query; streaming or non-streaming based on request.stream."""
