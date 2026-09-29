@@ -13,6 +13,7 @@ class TTSRequest(BaseModel):
     speed: float = 1.0
 
 @router.post("/transcribe")
+@router.post("/transcribe/")
 async def transcribe(file: UploadFile = File(...)):
     try:
         audio_bytes = await file.read()
@@ -22,6 +23,7 @@ async def transcribe(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"STT Error: {str(e)}")
 
 @router.post("/speak")
+@router.post("/speak/")
 async def speak(request: TTSRequest):
     try:
         wav_bytes = generate_speech(request.text, request.voice, request.speed)

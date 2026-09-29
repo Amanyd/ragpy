@@ -14,6 +14,12 @@ router = APIRouter()
 
 
 @router.post(
+    "",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=IngestResponse,
+    tags=["ingest"],
+)
+@router.post(
     "/",
     status_code=status.HTTP_202_ACCEPTED,
     response_model=IngestResponse,
