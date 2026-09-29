@@ -21,6 +21,13 @@ from app.pipeline.quiz.pipeline import generate_course_quiz
 logger = logging.getLogger(__name__)
 
 
+_in_flight: set[str] = set()
+
+
+def _get_task_key(course_id: str, lesson_id: str | None, difficulty: str) -> str:
+    return f"{course_id}:{lesson_id or 'course'}:{difficulty}"
+
+
 async def process_quiz_message(msg: Msg, sem: asyncio.Semaphore) -> None:
     """Parse, validate, and process a single quiz generation message."""
     async with sem:
@@ -45,7 +52,28 @@ async def process_quiz_message(msg: Msg, sem: asyncio.Semaphore) -> None:
         difficulty: str = payload.get("difficulty", "medium")
         limit_chunks: int = int(payload.get("limit_chunks", 20))
 
+        task_key = _get_task_key(course_id, lesson_id, difficulty)
+        if task_key in _in_flight:
+            logger.warning("quiz_msg duplicate already in flight key=%s - acking & skipping", task_key)
+            await msg.ack()
+            return
+
+        _in_flight.add(task_key)
+
         js = get_js()
+
+        async def _heartbeat():
+            while True:
+                try:
+                    await asyncio.sleep(10)
+                    await msg.in_progress()
+                except asyncio.CancelledError:
+                    break
+                except Exception as e:
+                    logger.debug("quiz_heartbeat exception e=%s", e)
+                    break
+
+        heartbeat_task = asyncio.create_task(_heartbeat())
 
         try:
             # Reusing generate_course_quiz name but updating its internals in pipeline.py
@@ -85,6 +113,9 @@ async def process_quiz_message(msg: Msg, sem: asyncio.Semaphore) -> None:
             await js.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
             # Acknowledge the message since we've permanently failed and notified the backend
             await msg.ack()
+        finally:
+            heartbeat_task.cancel()
+            _in_flight.discard(task_key)
 
 
 async def start_quiz_worker() -> None:
@@ -94,7 +125,7 @@ async def start_quiz_worker() -> None:
         RAG_QUIZ_PUBLISH_SUBJECT,
         durable=DURABLE_QUIZ_WORKER,
         stream=RAG_QUIZ_STREAM,
-        config=ConsumerConfig(max_deliver=5),
+        config=ConsumerConfig(max_deliver=2, ack_wait=300),
     )
     logger.info("quiz_worker pull_subscribe registered subject=%s", RAG_QUIZ_PUBLISH_SUBJECT)
 
