@@ -40,7 +40,7 @@ CONDENSE_PROMPT = PromptTemplate(
         "if tempted to, you haven't resolved the reference yet.\n"
         "4. Preserve original intent and instruction words exactly.\n"
         "5. Output ONLY the rewritten query. No preamble, no explanation.\n"
-        "6. If the follow up question is a general statement, wish or query that you can answer with no need of context, then just return the same question, you do not need to rewrite it with proper refrences. \n"
+        "6. If the follow up question is a general statement, wish, slur or query that you can answer with no need of context, then just return the same question, you do not need to rewrite it with proper refrences. \n"
         "\n"
         "Conversation History:\n"
         "{chat_history}\n"
