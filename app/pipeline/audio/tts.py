@@ -16,12 +16,25 @@ def get_tts_pipeline():
             raise RuntimeError(f"TTS Init Error: {e}")
     return tts_pipeline
 
+def generate_speech_chunks(text: str, voice: str = 'hm_omega', speed: float = 1.0):
+    pipeline = get_tts_pipeline()
+    if not pipeline:
+        raise RuntimeError("Kokoro TTS pipeline is not initialized.")
+        
+    generator = pipeline(text, voice=voice, speed=speed, split_pattern=r'[.!?]+\s*|\n+')
+    
+    for i, (gs, ps, audio) in enumerate(generator):
+        if audio is not None and len(audio) > 0:
+            out_io = io.BytesIO()
+            sf.write(out_io, audio, 24000, format='WAV')
+            yield out_io.getvalue()
+
 def generate_speech(text: str, voice: str = 'hm_omega', speed: float = 1.0) -> bytes:
     pipeline = get_tts_pipeline()
     if not pipeline:
         raise RuntimeError("Kokoro TTS pipeline is not initialized.")
         
-    generator = pipeline(text, voice=voice, speed=speed, split_pattern=r'\n+')
+    generator = pipeline(text, voice=voice, speed=speed, split_pattern=r'[.!?]+\s*|\n+')
     audio_chunks = []
     
     for i, (gs, ps, audio) in enumerate(generator):
