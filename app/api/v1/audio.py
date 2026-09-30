@@ -11,8 +11,9 @@ router = APIRouter(tags=["audio"])
 
 class TTSRequest(BaseModel):
     text: str
-    voice: str = "hm_omega"  # Hindi male voice ('Rohan' equivalent)
+    voice: str = "bm_george"  # British male voice ('George' - fast, authoritative military tone)
     speed: float = 1.0
+    stream: bool = True
 
 @router.post("/transcribe")
 @router.post("/transcribe/")
@@ -28,7 +29,8 @@ async def transcribe(file: UploadFile = File(...)):
 @router.post("/speak/")
 async def speak(request: TTSRequest, stream: bool = True):
     try:
-        if stream:
+        should_stream = stream and request.stream
+        if should_stream:
             def stream_generator():
                 for i, chunk_bytes in enumerate(generate_speech_chunks(request.text, request.voice, request.speed)):
                     b64 = base64.b64encode(chunk_bytes).decode("ascii")

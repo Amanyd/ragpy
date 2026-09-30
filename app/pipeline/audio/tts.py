@@ -10,16 +10,18 @@ def get_tts_pipeline():
     global tts_pipeline
     if tts_pipeline is None:
         try:
-            tts_pipeline = KPipeline(lang_code='h') # Using Hindi as requested earlier, or 'a' for American 
+            tts_pipeline = KPipeline(lang_code='b') # British English for fast phonemization & formal naval tone
         except Exception as e:
             print(f"Failed to load Kokoro TTS pipeline: {e}")
             raise RuntimeError(f"TTS Init Error: {e}")
     return tts_pipeline
 
-def generate_speech_chunks(text: str, voice: str = 'hm_omega', speed: float = 1.0):
+def generate_speech_chunks(text: str, voice: str = 'bm_george', speed: float = 1.0):
     pipeline = get_tts_pipeline()
     if not pipeline:
         raise RuntimeError("Kokoro TTS pipeline is not initialized.")
+    if not voice or voice.startswith('h'):
+        voice = 'bm_george'
         
     generator = pipeline(text, voice=voice, speed=speed, split_pattern=r'[.!?]+\s*|\n+')
     
@@ -29,10 +31,12 @@ def generate_speech_chunks(text: str, voice: str = 'hm_omega', speed: float = 1.
             sf.write(out_io, audio, 24000, format='WAV')
             yield out_io.getvalue()
 
-def generate_speech(text: str, voice: str = 'hm_omega', speed: float = 1.0) -> bytes:
+def generate_speech(text: str, voice: str = 'bm_george', speed: float = 1.0) -> bytes:
     pipeline = get_tts_pipeline()
     if not pipeline:
         raise RuntimeError("Kokoro TTS pipeline is not initialized.")
+    if not voice or voice.startswith('h'):
+        voice = 'bm_george'
         
     generator = pipeline(text, voice=voice, speed=speed, split_pattern=r'[.!?]+\s*|\n+')
     audio_chunks = []
