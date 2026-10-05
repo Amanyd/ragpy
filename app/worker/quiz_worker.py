@@ -58,9 +58,27 @@ async def process_quiz_message(msg: Msg, sem: asyncio.Semaphore) -> None:
             await msg.ack()
             return
 
-        _in_flight.add(task_key)
-
         js = get_js()
+
+        # Course assessments do not need RAG generation; the backend dynamically
+        # samples 20 questions across all lessons from the stored question bank.
+        if quiz_type == "course":
+            logger.info("course_quiz_fast_ack course_id=%s difficulty=%s", course_id, difficulty)
+            done_payload = {
+                "type": quiz_type,
+                "status": "success",
+                "course_id": course_id,
+                "lesson_id": lesson_id,
+                "difficulty": difficulty,
+                "keywords": [],
+                "questions": [],
+                "topics": [],
+            }
+            await js.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
+            await msg.ack()
+            return
+
+        _in_flight.add(task_key)
 
         async def _heartbeat():
             while True:
