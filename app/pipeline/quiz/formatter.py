@@ -7,6 +7,7 @@ from typing import Literal
 from llama_index.core.schema import BaseNode
 from pydantic import BaseModel, model_validator
 
+from app.llm.factory import get_llm
 from app.llm.prompts import QUIZ_GENERATION_PROMPT, TOPIC_SYNTHESIS_PROMPT
 from app.llm.structured import astructured_predict_json
 
