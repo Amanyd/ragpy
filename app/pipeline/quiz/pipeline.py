@@ -16,7 +16,7 @@ from qdrant_client.http import models as qdrant_models
 
 from app.config.settings import settings
 from app.pipeline.query.full_retriever import HybridRetriever
-from app.pipeline.query.reranker import get_reranker
+from app.pipeline.query.reranker import get_reranker, safe_postprocess_nodes
 from app.pipeline.quiz.extractor import extract_topics_from_nodes
 from app.pipeline.quiz.formatter import (
     QuizOutput,
@@ -209,7 +209,7 @@ async def generate_course_quiz(
 
                     # 3. Cross-Encoder Rerank to Top 6
                     reranked_nodes = await asyncio.to_thread(
-                        reranker.postprocess_nodes, study_nodes, QueryBundle(topic_phrase)
+                        safe_postprocess_nodes, reranker, study_nodes, QueryBundle(topic_phrase), 6
                     )
                     top_chunks = [n.node for n in reranked_nodes][:6]
 
@@ -271,7 +271,7 @@ async def generate_course_quiz(
             study_nodes = nodes_with_score
 
         reranked_nodes = await asyncio.to_thread(
-            reranker.postprocess_nodes, study_nodes, QueryBundle(query_str)
+            safe_postprocess_nodes, reranker, study_nodes, QueryBundle(query_str), 15
         )
         sampled_nodes = [n.node for n in reranked_nodes]
 
