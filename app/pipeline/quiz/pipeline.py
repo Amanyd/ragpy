@@ -190,38 +190,42 @@ async def generate_course_quiz(
 
         async def _process_single_topic(topic_phrase: str) -> TopicSynthesisOutput:
             async with topic_sem:
-                logger.info("processing_topic start topic=%s", topic_phrase)
-                # 1. Hybrid search Top 100
-                nodes_with_score: list[NodeWithScore] = await asyncio.to_thread(
-                    retriever.retrieve, topic_phrase
-                )
+                try:
+                    logger.info("processing_topic start topic=%s", topic_phrase)
+                    # 1. Hybrid search Top 100
+                    nodes_with_score: list[NodeWithScore] = await asyncio.to_thread(
+                        retriever.retrieve, topic_phrase
+                    )
 
-                # 2. Strict PDF filter (exclude .docx, .pptx, and lesson plan itself)
-                study_nodes = [
-                    n for n in nodes_with_score if _is_study_node(n.node, lesson_plan_file_id=file_id)
-                ]
+                    # 2. Strict PDF filter (exclude .docx, .pptx, and lesson plan itself)
+                    study_nodes = [
+                        n for n in nodes_with_score if _is_study_node(n.node, lesson_plan_file_id=file_id)
+                    ]
 
-                # Fallback to all retrieved nodes if no PDF files exist in the course yet
-                if not study_nodes:
-                    logger.warning("no_pdf_study_nodes_found fallback_to_all topic=%s", topic_phrase)
-                    study_nodes = nodes_with_score
+                    # Fallback to all retrieved nodes if no PDF files exist in the course yet
+                    if not study_nodes:
+                        logger.warning("no_pdf_study_nodes_found fallback_to_all topic=%s", topic_phrase)
+                        study_nodes = nodes_with_score
 
-                # 3. Cross-Encoder Rerank to Top 6
-                reranked_nodes = await asyncio.to_thread(
-                    reranker.postprocess_nodes, study_nodes, QueryBundle(topic_phrase)
-                )
-                top_chunks = [n.node for n in reranked_nodes][:6]
+                    # 3. Cross-Encoder Rerank to Top 6
+                    reranked_nodes = await asyncio.to_thread(
+                        reranker.postprocess_nodes, study_nodes, QueryBundle(topic_phrase)
+                    )
+                    top_chunks = [n.node for n in reranked_nodes][:6]
 
-                logger.info(
-                    "topic_chunks_ready topic=%s candidates=%d filtered=%d reranked=%d",
-                    topic_phrase,
-                    len(nodes_with_score),
-                    len(study_nodes),
-                    len(top_chunks),
-                )
+                    logger.info(
+                        "topic_chunks_ready topic=%s candidates=%d filtered=%d reranked=%d",
+                        topic_phrase,
+                        len(nodes_with_score),
+                        len(study_nodes),
+                        len(top_chunks),
+                    )
 
-                # 4. Generate 4 Slides + 6 Questions
-                return await synthesize_topic(top_chunks, topic_phrase)
+                    # 4. Generate 4 Slides + 6 Questions
+                    return await synthesize_topic(top_chunks, topic_phrase)
+                except Exception as e:
+                    logger.error("single_topic_processing_failed topic=%s err=%s", topic_phrase, e)
+                    return TopicSynthesisOutput(slides=[], questions=[])
 
         # Run topics concurrently with Semaphore(3)
         tasks = [_process_single_topic(t) for t in extracted_topics]
