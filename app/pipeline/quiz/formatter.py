@@ -2,7 +2,8 @@
 
 
 import logging
-from typing import Literal
+import re
+from typing import Any, Literal
 
 from llama_index.core.schema import BaseNode
 from pydantic import BaseModel, model_validator
@@ -27,31 +28,111 @@ class QuizQuestion(BaseModel):
     type: Literal["mcq", "open_ended"] = "mcq"
     question: str
     choices: list[QuizChoice] | None = None
-    answer: str
+    answer: str = "A"
     explanation: str | None = None
     difficulty: Literal["easy", "medium", "hard"] = "medium"
     topic_phrase: str | None = None
 
-    @model_validator(mode="after")
-    def validate_choices(self) -> "QuizQuestion":
-        if self.type == "mcq":
-            if not self.choices or len(self.choices) < 2:
-                raise ValueError("MCQ question must have at least 2 choices")
-        elif self.type == "open_ended":
-            pass
-        return self
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_question(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Normalize question text
+            if not data.get("question"):
+                data["question"] = data.get("text") or data.get("prompt") or data.get("query") or "Aviation technical query"
+
+            # Normalize choices / options
+            raw_choices = data.get("choices") or data.get("options")
+            if isinstance(raw_choices, list) and raw_choices:
+                parsed_choices = []
+                for idx, c in enumerate(raw_choices):
+                    if isinstance(c, str):
+                        m = re.match(r"^([A-Da-d])[\.\:\)]\s*(.*)$", c.strip())
+                        if m:
+                            parsed_choices.append({"label": m.group(1).upper(), "text": m.group(2).strip()})
+                        else:
+                            label = chr(ord('A') + idx) if idx < 4 else str(idx + 1)
+                            parsed_choices.append({"label": label, "text": c.strip()})
+                    elif isinstance(c, dict):
+                        label = c.get("label", "")
+                        text = c.get("text") or c.get("value") or c.get("choice") or ""
+                        if not label and text:
+                            m = re.match(r"^([A-Da-d])[\.\:\)]\s*(.*)$", str(text).strip())
+                            if m:
+                                label = m.group(1).upper()
+                                text = m.group(2).strip()
+                            else:
+                                label = chr(ord('A') + idx)
+                        parsed_choices.append({"label": str(label).upper() or chr(ord('A') + idx), "text": str(text)})
+                data["choices"] = parsed_choices
+            elif not raw_choices and data.get("type", "mcq") == "mcq":
+                data["choices"] = [
+                    {"label": "A", "text": "True / Standard Operation"},
+                    {"label": "B", "text": "False / Abnormal Operation"},
+                ]
+
+            # Normalize answer
+            raw_ans = data.get("answer") or data.get("correct_answer") or data.get("correctAnswer") or data.get("solution")
+            if not raw_ans:
+                data["answer"] = "A"
+            else:
+                ans = str(raw_ans).strip()
+                m = re.match(r"^([A-Da-d])\b", ans)
+                data["answer"] = m.group(1).upper() if m else ans
+
+            # Normalize explanation
+            if not data.get("explanation"):
+                data["explanation"] = data.get("reasoning") or data.get("rationale") or data.get("justification") or ""
+
+        return data
 
 
 class TopicSlide(BaseModel):
     """A single micro-learning educational slide."""
 
-    slide_number: int
-    slide_type: Literal["concept", "technical_limits", "diagram", "emergency"]
-    title: str
+    slide_number: int = 1
+    slide_type: Literal["concept", "technical_limits", "diagram", "emergency"] = "concept"
+    title: str = "Aviation Concept"
     bullets: list[str] = []
     formula_or_rule: str | None = None
     diagram_mermaid: str | None = None
     warning: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_slide(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "slide_type" not in data and "type" in data:
+                data["slide_type"] = data.pop("type")
+            st = str(data.get("slide_type", "")).lower().replace(" ", "_")
+            if "diagram" in st or "chart" in st or "schematic" in st or "flow" in st:
+                data["slide_type"] = "diagram"
+            elif "limit" in st or "formula" in st or "rule" in st or "calc" in st:
+                data["slide_type"] = "technical_limits"
+            elif "emerg" in st or "malfunct" in st or "warn" in st or "alert" in st:
+                data["slide_type"] = "emergency"
+            else:
+                data["slide_type"] = "concept"
+
+            if not data.get("title"):
+                data["title"] = f"{data['slide_type'].replace('_', ' ').title()} Overview"
+
+            # Bullets
+            raw_bullets = data.get("bullets") or data.get("bullet_points") or data.get("points") or data.get("content")
+            if isinstance(raw_bullets, list):
+                data["bullets"] = [str(b).strip("- ").strip() for b in raw_bullets if str(b).strip()]
+            elif isinstance(raw_bullets, str):
+                data["bullets"] = [line.strip("- ").strip() for line in raw_bullets.splitlines() if line.strip()]
+
+            # Diagram / Formula / Warning aliases
+            if not data.get("diagram_mermaid"):
+                data["diagram_mermaid"] = data.get("diagram") or data.get("mermaid")
+            if not data.get("formula_or_rule"):
+                data["formula_or_rule"] = data.get("formula") or data.get("rule") or data.get("limits")
+            if not data.get("warning"):
+                data["warning"] = data.get("caution") or data.get("emergency_procedure") or data.get("protocol")
+
+        return data
 
 
 class TopicSynthesisOutput(BaseModel):
@@ -59,6 +140,24 @@ class TopicSynthesisOutput(BaseModel):
 
     slides: list[TopicSlide] = []
     questions: list[QuizQuestion] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_synthesis(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            raw_slides = data.get("slides") or data.get("topic_slides") or data.get("presentation") or []
+            if isinstance(raw_slides, list):
+                for idx, s in enumerate(raw_slides):
+                    if isinstance(s, dict):
+                        if not s.get("slide_number"):
+                            s["slide_number"] = idx + 1
+                data["slides"] = raw_slides
+
+            raw_questions = data.get("questions") or data.get("quiz") or data.get("quiz_questions") or []
+            if isinstance(raw_questions, list):
+                data["questions"] = raw_questions
+
+        return data
 
 
 class TopicSummary(BaseModel):

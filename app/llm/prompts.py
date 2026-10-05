@@ -97,11 +97,67 @@ TOPIC_SYNTHESIS_PROMPT = PromptTemplate(
         "   - Exactly 2 EASY questions (difficulty: \"easy\"): Direct factual recall, definitions, acronyms, standard constants.\n"
         "   - Exactly 2 MEDIUM questions (difficulty: \"medium\"): Parameter variations, formula calculations, cause-and-effect relationships.\n"
         "   - Exactly 2 HARD questions (difficulty: \"hard\"): In-flight malfunction diagnosis, conflicting instrument indications, multi-step emergency decisions.\n\n"
-        "RULES FOR QUESTIONS:\n"
-        "- All questions must be MCQ with exactly 4 choices labeled 'A', 'B', 'C', 'D'.\n"
-        "- Exactly one choice must be correct.\n"
-        "- Provide a thorough technical explanation citing the aerodynamic principle.\n"
-        "- Output strictly valid JSON matching the schema.\n\n"
+        "RULES FOR JSON OUTPUT:\n"
+        "- Output strictly valid JSON matching the exact schema below.\n"
+        "- Each question MUST have 'type': 'mcq', 'question', 'choices', 'answer', 'explanation', and 'difficulty'.\n"
+        "- 'choices' MUST be a list of 4 objects with 'label' ('A', 'B', 'C', 'D') and 'text'.\n"
+        "- 'answer' MUST be a single letter ('A', 'B', 'C', or 'D').\n\n"
+        "EXAMPLE JSON OUTPUT SCHEMA:\n"
+        "{{\n"
+        '  "slides": [\n'
+        '    {{\n'
+        '      "slide_number": 1,\n'
+        '      "slide_type": "concept",\n'
+        '      "title": "Core Principles",\n'
+        '      "bullets": ["Point 1", "Point 2"],\n'
+        '      "formula_or_rule": null,\n'
+        '      "diagram_mermaid": null,\n'
+        '      "warning": null\n'
+        '    }},\n'
+        '    {{\n'
+        '      "slide_number": 2,\n'
+        '      "slide_type": "technical_limits",\n'
+        '      "title": "Operating Limitations",\n'
+        '      "bullets": ["Limit rules"],\n'
+        '      "formula_or_rule": "V_ref = 1.3 * V_so",\n'
+        '      "diagram_mermaid": null,\n'
+        '      "warning": null\n'
+        '    }},\n'
+        '    {{\n'
+        '      "slide_number": 3,\n'
+        '      "slide_type": "diagram",\n'
+        '      "title": "System Flow Schematic",\n'
+        '      "bullets": ["Component interconnection"],\n'
+        '      "formula_or_rule": null,\n'
+        '      "diagram_mermaid": "graph LR\\n  A[Inlet] --> B[Compressor] --> C[Turbine]",\n'
+        '      "warning": null\n'
+        '    }},\n'
+        '    {{\n'
+        '      "slide_number": 4,\n'
+        '      "slide_type": "emergency",\n'
+        '      "title": "Emergency Protocol",\n'
+        '      "bullets": ["Cockpit indication"],\n'
+        '      "formula_or_rule": null,\n'
+        '      "diagram_mermaid": null,\n'
+        '      "warning": "Immediate pilot action checklist"\n'
+        '    }}\n'
+        '  ],\n'
+        '  "questions": [\n'
+        '    {{\n'
+        '      "type": "mcq",\n'
+        '      "question": "Sample technical question?",\n'
+        '      "choices": [\n'
+        '        {{"label": "A", "text": "Correct explanation"}},\n'
+        '        {{"label": "B", "text": "Distractor one"}},\n'
+        '        {{"label": "C", "text": "Distractor two"}},\n'
+        '        {{"label": "D", "text": "Distractor three"}}\n'
+        '      ],\n'
+        '      "answer": "A",\n'
+        '      "explanation": "Technical justification.",\n'
+        '      "difficulty": "easy"\n'
+        '    }}\n'
+        '  ]\n'
+        "}}\n\n"
         "Context Excerpts:\n"
         "{context_str}\n\n"
         "Output JSON:\n"
