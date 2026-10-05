@@ -87,6 +87,7 @@ async def process_quiz_message(msg: Msg, sem: asyncio.Semaphore) -> None:
                 limit_chunks=limit_chunks,
             )
 
+            dumped = json.loads(result.model_dump_json())
             done_payload = {
                 "type": quiz_type,
                 "status": "success",
@@ -94,10 +95,11 @@ async def process_quiz_message(msg: Msg, sem: asyncio.Semaphore) -> None:
                 "lesson_id": lesson_id,
                 "difficulty": difficulty,
                 "keywords": extracted_keywords,
-                "questions": json.loads(result.model_dump_json())["questions"],
+                "questions": dumped.get("questions", []),
+                "topics": dumped.get("topics", []),
             }
             await js.publish(RAG_QUIZ_DONE_SUBJECT, json.dumps(done_payload).encode())
-            logger.info("quiz_done type=%s course_id=%s difficulty=%s questions=%d", quiz_type, course_id, difficulty, len(result.questions))
+            logger.info("quiz_done type=%s course_id=%s difficulty=%s questions=%d topics=%d", quiz_type, course_id, difficulty, len(result.questions), len(dumped.get("topics", [])))
             await msg.ack()
 
         except Exception:
