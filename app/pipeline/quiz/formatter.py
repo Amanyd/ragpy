@@ -91,8 +91,8 @@ class TopicSlide(BaseModel):
     """A single micro-learning educational slide."""
 
     slide_number: int = 1
-    slide_type: Literal["concept", "technical_limits", "diagram", "emergency", "summary"] = "concept"
-    title: str = "Aviation Concept"
+    slide_type: str = "concept"
+    title: str = "Topic Overview"
     bullets: list[str] = []
     formula_or_rule: str | None = None
     diagram_mermaid: str | None = None
@@ -102,43 +102,44 @@ class TopicSlide(BaseModel):
     @classmethod
     def normalize_slide(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            if "slide_type" not in data and "type" in data:
-                data["slide_type"] = data.pop("type")
-            st = str(data.get("slide_type", "")).lower().replace(" ", "_")
-            if "diagram" in st or "chart" in st or "schematic" in st or "flow" in st:
-                data["slide_type"] = "diagram"
-            elif "limit" in st or "formula" in st or "rule" in st or "calc" in st or "technic" in st:
-                data["slide_type"] = "technical_limits"
-            elif "emerg" in st or "malfunct" in st or "warn" in st or "alert" in st:
-                data["slide_type"] = "emergency"
-            elif "summ" in st or "conclus" in st or "evaluat" in st or "takeaway" in st or "overview" in st:
-                data["slide_type"] = "summary"
-            else:
-                data["slide_type"] = "concept"
-
+            # Title
             if not data.get("title"):
-                data["title"] = f"{data['slide_type'].replace('_', ' ').title()} Overview"
+                data["title"] = data.get("name") or data.get("heading") or data.get("topic") or "Topic Briefing"
 
-            # Bullets
-            raw_bullets = data.get("bullets") or data.get("bullet_points") or data.get("points") or data.get("content")
+            # Bullets / Content
+            raw_bullets = (
+                data.get("bullets")
+                or data.get("bullet_points")
+                or data.get("points")
+                or data.get("content")
+                or data.get("key_points")
+            )
             if isinstance(raw_bullets, list):
                 data["bullets"] = [str(b).strip("- ").strip() for b in raw_bullets if str(b).strip()]
             elif isinstance(raw_bullets, str):
                 data["bullets"] = [line.strip("- ").strip() for line in raw_bullets.splitlines() if line.strip()]
 
-            # Diagram / Formula / Warning aliases
-            if not data.get("diagram_mermaid"):
-                data["diagram_mermaid"] = data.get("diagram") or data.get("mermaid")
+            # Formula / Equation aliases
             if not data.get("formula_or_rule"):
-                data["formula_or_rule"] = data.get("formula") or data.get("rule") or data.get("limits")
+                data["formula_or_rule"] = data.get("formula") or data.get("equation") or data.get("rule") or data.get("limits")
+
+            # Diagram aliases
+            if not data.get("diagram_mermaid"):
+                data["diagram_mermaid"] = data.get("diagram") or data.get("mermaid") or data.get("chart")
+
+            # Warning / Note / Takeaway aliases
             if not data.get("warning"):
-                data["warning"] = data.get("caution") or data.get("emergency_procedure") or data.get("protocol")
+                data["warning"] = data.get("note") or data.get("takeaway") or data.get("caution") or data.get("emergency_procedure")
+
+            # Slide type (flexible string)
+            st = str(data.get("slide_type") or data.get("type") or "concept").lower()
+            data["slide_type"] = st
 
         return data
 
 
 class TopicSynthesisOutput(BaseModel):
-    """Combined output for a topic: 4 slides + 6 questions."""
+    """Combined output for a topic: flexible slides + question bank items."""
 
     slides: list[TopicSlide] = []
     questions: list[QuizQuestion] = []
@@ -147,7 +148,19 @@ class TopicSynthesisOutput(BaseModel):
     @classmethod
     def normalize_synthesis(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            raw_slides = data.get("slides") or data.get("topic_slides") or data.get("presentation") or []
+            # Capture slides from any possible key the LLM might use
+            raw_slides = (
+                data.get("slides")
+                or data.get("topic_slides")
+                or data.get("micro_learning_slides")
+                or data.get("presentation")
+                or data.get("lesson_slides")
+                or data.get("deck")
+                or []
+            )
+            if isinstance(raw_slides, dict):
+                raw_slides = list(raw_slides.values())
+
             if isinstance(raw_slides, list):
                 for idx, s in enumerate(raw_slides):
                     if isinstance(s, dict):
@@ -155,7 +168,21 @@ class TopicSynthesisOutput(BaseModel):
                             s["slide_number"] = idx + 1
                 data["slides"] = raw_slides
 
-            raw_questions = data.get("questions") or data.get("quiz") or data.get("quiz_questions") or []
+            # Capture questions from any possible key the LLM might use
+            raw_questions = (
+                data.get("questions")
+                or data.get("quiz")
+                or data.get("quiz_questions")
+                or data.get("examination_questions")
+                or data.get("mcqs")
+                or data.get("mcq_questions")
+                or data.get("exam_questions")
+                or data.get("practice_questions")
+                or []
+            )
+            if isinstance(raw_questions, dict):
+                raw_questions = list(raw_questions.values())
+
             if isinstance(raw_questions, list):
                 data["questions"] = raw_questions
 

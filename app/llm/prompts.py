@@ -82,23 +82,51 @@ QUIZ_GENERATION_PROMPT = PromptTemplate(
 
 TOPIC_SYNTHESIS_PROMPT = PromptTemplate(
     template=(
-        "You are a senior naval instructor creating comprehensive school training material for the topic:\n"
+        "You are an expert instructor creating educational briefing material and examination questions for the topic:\n"
         "\"{topic_phrase}\"\n\n"
-        "Based strictly on the provided technical manual excerpts, generate:\n"
-        "1. Micro-learning slides teaching this topic:\n"
-        "   - concepts: Core principles and key bullet takeaways.\n"
-        "   - technicals: Key formulas, numerical limits, or rules.\n"
-        "   - diagrams: Valid, clean Mermaid.js diagram visualizing the system schematic, flow, or decision tree.\n"
-        "   - summary: Summary of the topic.\n\n"
-        "2. Exactly 6 multiple-choice examination questions testing this topic (calibrated by Bloom's Taxonomy):\n"
-        "   - Exactly 2 EASY questions (difficulty: \"easy\"): Direct factual recall, definitions, acronyms, standard constants.\n"
-        "   - Exactly 2 MEDIUM questions (difficulty: \"medium\"): Parameter variations, formula calculations, cause-and-effect relationships.\n"
-        "   - Exactly 2 HARD questions (difficulty: \"hard\"): Complex scenarios, advance multi step reasoning, questions that require mre than one concepts and steps to build a solution.\n\n"
-        "RULES FOR QUESTIONS:\n"
-        "- All questions must be MCQ with exactly 4 choices labeled 'A', 'B', 'C', 'D'.\n"
-        "- Exactly one choice must be correct.\n"
-        "- Provide a thorough technical explanation citing reference material.\n"
-        "- Output strictly valid JSON matching the schema.\n\n"
+        "Based on the provided technical excerpts, teach this topic clearly and progressively using structured slides, and create multiple-choice questions for the question bank.\n\n"
+        "1. SLIDES:\n"
+        "- Generate as many slides as needed to thoroughly and clearly teach this topic .\n"
+        "- Do NOT use rigid or pre-set slide names. Choose natural, informative titles for each slide based on what it teaches.\n"
+        "- For each slide, provide:\n"
+        "  - 'title': A descriptive heading for what this slide teaches.\n"
+        "  - 'bullets': 2 to 4 clear, instructive bullet points explaining the core concepts.\n"
+        "  - 'formula_or_rule': (Optional) A governing formula or calculation rule if applicable, else null.\n"
+        "  - 'diagram_mermaid': (Optional) A clean Mermaid.js diagram ('graph LR' or 'graph TD') if a diagram helps visualize the concept, else null.\n"
+        "  - 'warning': (Optional) An important note, operating limit, or key takeaway, else null.\n\n"
+        "2. EXAMINATION QUESTIONS (Question Bank):\n"
+        "- Generate exactly 6 multiple-choice questions testing this topic across Bloom's Taxonomy:\n"
+        "  - 2 EASY questions (difficulty: \"easy\"): Direct recall, definitions, standard terminology.\n"
+        "  - 2 MEDIUM questions (difficulty: \"medium\"): Parameter variations, formula calculations, cause-and-effect relationships.\n"
+        "  - 2 HARD questions (difficulty: \"hard\"): Complex scenarios, multi-step reasoning, analytical problem-solving.\n"
+        "- Each question must be MCQ with exactly 4 choices labeled 'A', 'B', 'C', 'D' and one correct answer.\n\n"
+        "CRITICAL: Output strictly valid JSON matching this structure with top-level 'slides' and 'questions':\n"
+        "{{\n"
+        '  "slides": [\n'
+        '    {{\n'
+        '      "title": "Descriptive Slide Title",\n'
+        '      "bullets": ["Clear explanation point 1", "Clear explanation point 2"],\n'
+        '      "formula_or_rule": null,\n'
+        '      "diagram_mermaid": null,\n'
+        '      "warning": null\n'
+        '    }}\n'
+        '  ],\n'
+        '  "questions": [\n'
+        '    {{\n'
+        '      "type": "mcq",\n'
+        '      "question": "Question text testing the topic?",\n'
+        '      "choices": [\n'
+        '        {{"label": "A", "text": "Option A"}},\n'
+        '        {{"label": "B", "text": "Option B"}},\n'
+        '        {{"label": "C", "text": "Option C"}},\n'
+        '        {{"label": "D", "text": "Option D"}}\n'
+        '      ],\n'
+        '      "answer": "A",\n'
+        '      "explanation": "Technical explanation citing aerodynamic/physical principles.",\n'
+        '      "difficulty": "easy"\n'
+        '    }}\n'
+        '  ]\n'
+        "}}\n\n"
         "Context Excerpts:\n"
         "{context_str}\n\n"
         "Output JSON:\n"
