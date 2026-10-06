@@ -84,7 +84,7 @@ TOPIC_SYNTHESIS_PROMPT = PromptTemplate(
     template=(
         "You are an expert instructor creating educational material and examination questions for the topic:\n"
         "\"{topic_phrase}\"\n\n"
-        "Based on the provided excerpts, generate examination questions first, followed by detailed micro-learning slides.\n\n"
+        "Based on the provided excerpts and your own knowledge of the topic, generate examination questions first, followed by detailed learning slides. You can add your own knowledge too if the excerpts do not have enough information about the topic. Do not use any vague references in any question, choice, answer or slide text, give full proper explaination if needed (No 'as per excerpt' or 'as per the diagram' references are to be used).\n\n"
         "1. EXAMINATION QUESTIONS (Question Bank - Exactly 6 MCQs):\n"
         "- Generate exactly 6 multiple-choice questions testing this topic across Bloom's Taxonomy BEFORE generating slides:\n"
         "  - 2 EASY questions (difficulty: \"easy\"): Direct recall of facts, definitions, and standard terminology.\n"
