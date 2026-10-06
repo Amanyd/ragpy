@@ -183,8 +183,8 @@ async def generate_course_quiz(
 
         logger.info("lesson_topics_ready count=%d topics=%s", len(extracted_topics), extracted_topics)
 
-        # Semaphore for local GPU concurrency (3 topics parallel)
-        topic_sem = asyncio.Semaphore(3)
+        # Semaphore for local GPU concurrency (2 topics parallel to avoid LM Studio contention)
+        topic_sem = asyncio.Semaphore(2)
         retriever = HybridRetriever(course_ids=[course_id], top_k=100)
         reranker = get_reranker(top_n=6)
 

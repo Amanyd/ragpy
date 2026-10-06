@@ -51,8 +51,8 @@ CONDENSE_PROMPT = PromptTemplate(
 
 QUIZ_GENERATION_PROMPT = PromptTemplate(
     template=(
-        "You generate quizzes from the provided context only.\n"
-        "Do use outside knowledge, If the context is insufficient.\n"
+        "You generate quizzes from the provided context.\n"
+        "Do use your own knowledge too about the topic\n"
         "Requirements:\n"
         "{requirements}\n"
         "- For mcq questions: provide exactly 4 choices labeled \"A\", \"B\", \"C\", \"D\". "
@@ -82,22 +82,22 @@ QUIZ_GENERATION_PROMPT = PromptTemplate(
 
 TOPIC_SYNTHESIS_PROMPT = PromptTemplate(
     template=(
-        "You are a senior naval flight instructor creating comprehensive ground school training material for the topic:\n"
+        "You are a senior naval instructor creating comprehensive school training material for the topic:\n"
         "\"{topic_phrase}\"\n\n"
-        "Based strictly on the provided technical manual excerpts (PDF textbooks only), generate:\n"
-        "1. Exactly 4 micro-learning slides teaching this topic:\n"
-        "   - Slide 1 (concept): Core aerodynamic / avionic principle and key bullet takeaways.\n"
-        "   - Slide 2 (technical_limits): Key formulas, numerical limits (e.g. V-speeds, pressure constants), or operational rules.\n"
-        "   - Slide 3 (diagram): A valid, clean Mermaid.js diagram ('graph LR' or 'graph TD') visualizing the system schematic, flow, or decision tree.\n"
-        "   - Slide 4 (emergency): Cockpit malfunction symptoms, in-flight red warning alerts, and immediate pilot action checklists.\n\n"
+        "Based strictly on the provided technical manual excerpts, generate:\n"
+        "1. Micro-learning slides teaching this topic:\n"
+        "   - concepts: Core principles and key bullet takeaways.\n"
+        "   - technicals: Key formulas, numerical limits, or rules.\n"
+        "   - diagrams: Valid, clean Mermaid.js diagram visualizing the system schematic, flow, or decision tree.\n"
+        "   - summary: Summary of the topic.\n\n"
         "2. Exactly 6 multiple-choice examination questions testing this topic (calibrated by Bloom's Taxonomy):\n"
         "   - Exactly 2 EASY questions (difficulty: \"easy\"): Direct factual recall, definitions, acronyms, standard constants.\n"
         "   - Exactly 2 MEDIUM questions (difficulty: \"medium\"): Parameter variations, formula calculations, cause-and-effect relationships.\n"
-        "   - Exactly 2 HARD questions (difficulty: \"hard\"): In-flight malfunction diagnosis, conflicting instrument indications, multi-step emergency decisions.\n\n"
+        "   - Exactly 2 HARD questions (difficulty: \"hard\"): Complex scenarios, advance multi step reasoning, questions that require mre than one concepts and steps to build a solution.\n\n"
         "RULES FOR QUESTIONS:\n"
         "- All questions must be MCQ with exactly 4 choices labeled 'A', 'B', 'C', 'D'.\n"
         "- Exactly one choice must be correct.\n"
-        "- Provide a thorough technical explanation citing the aerodynamic principle.\n"
+        "- Provide a thorough technical explanation citing reference material.\n"
         "- Output strictly valid JSON matching the schema.\n\n"
         "Context Excerpts:\n"
         "{context_str}\n\n"

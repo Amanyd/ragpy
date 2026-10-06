@@ -145,16 +145,17 @@ async def start_quiz_worker() -> None:
         RAG_QUIZ_PUBLISH_SUBJECT,
         durable=DURABLE_QUIZ_WORKER,
         stream=RAG_QUIZ_STREAM,
-        config=ConsumerConfig(max_deliver=2, ack_wait=300),
+        config=ConsumerConfig(max_deliver=3, ack_wait=600),
     )
     logger.info("quiz_worker pull_subscribe registered subject=%s", RAG_QUIZ_PUBLISH_SUBJECT)
 
-    sem = asyncio.Semaphore(3)
+    # Process 1 lesson message at a time to prevent overloading local LLM endpoint on 40+ lesson courses
+    sem = asyncio.Semaphore(1)
 
     while True:
         try:
-            # Fetch up to 3 messages at once
-            msgs = await psub.fetch(batch=3, timeout=1.0)
+            # Fetch 1 message at a time
+            msgs = await psub.fetch(batch=1, timeout=1.0)
             for msg in msgs:
                 asyncio.create_task(process_quiz_message(msg, sem))
         except nats.errors.TimeoutError:

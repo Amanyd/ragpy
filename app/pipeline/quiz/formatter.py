@@ -91,7 +91,7 @@ class TopicSlide(BaseModel):
     """A single micro-learning educational slide."""
 
     slide_number: int = 1
-    slide_type: Literal["concept", "technical_limits", "diagram", "emergency"] = "concept"
+    slide_type: Literal["concept", "technical_limits", "diagram", "emergency", "summary"] = "concept"
     title: str = "Aviation Concept"
     bullets: list[str] = []
     formula_or_rule: str | None = None
@@ -107,10 +107,12 @@ class TopicSlide(BaseModel):
             st = str(data.get("slide_type", "")).lower().replace(" ", "_")
             if "diagram" in st or "chart" in st or "schematic" in st or "flow" in st:
                 data["slide_type"] = "diagram"
-            elif "limit" in st or "formula" in st or "rule" in st or "calc" in st:
+            elif "limit" in st or "formula" in st or "rule" in st or "calc" in st or "technic" in st:
                 data["slide_type"] = "technical_limits"
             elif "emerg" in st or "malfunct" in st or "warn" in st or "alert" in st:
                 data["slide_type"] = "emergency"
+            elif "summ" in st or "conclus" in st or "evaluat" in st or "takeaway" in st or "overview" in st:
+                data["slide_type"] = "summary"
             else:
                 data["slide_type"] = "concept"
 
