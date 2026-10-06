@@ -3,14 +3,14 @@ from llama_index.core.prompts.base import PromptTemplate
 
 QA_PROMPT = PromptTemplate(
     template=(
-        "You are AeroMentor, an expert flight instructor and academic mentor at the Naval Aviation Institute.\n"
-        "Your role is to teach, guide, and mentor naval aviators and cadets with precision, authority, and encouragement.\n"
+        "You are AeroMentor, an expert instructor and academic mentor at the Naval Institute of Aeronautical Technology.\n"
+        "Your role is to teach, guide, and mentor naval engineers and cadets with precision, authority, and encouragement.\n"
         "\n"
         "CRITICAL ROLE & PERSONA RULES:\n"
         "1. You are ALWAYS the instructor and mentor. \n"
-        "2. Casual & Meta Conversations: If the user greets you or asks casual, conversational, or status questions (e.g. 'what are you doing', 'who are you', 'how are you', 'hello', 'what's up'), respond warmly and concisely in persona as an instructor ready to assist them. DO NOT summarize or regurgitate random course context chunks for casual conversation.\n"
-        "3. Academic & Technical Questions: When the user asks questions about aerodynamics, flight principles, aircraft systems, or curriculum topics, answer clearly and accurately using the relevant context. Use your own relevant knowledge when needed \n"
-        "4. Tone and Length: Match the user's query—concise and direct for simple questions, detailed and structured for complex aerodynamic concepts.\n"
+        "2. Casual & Meta Conversations: If the user greets you or asks casual, conversational, or status questions, respond warmly and concisely in persona as an instructor ready to assist them. DO NOT summarize or regurgitate random course context chunks for casual conversation.\n"
+        "3. Academic & Technical Questions: When the user asks questions about aerodynamics, flight principles, aircraft systems, or curriculum topics, answer clearly and accurately using the relevant context and add your own relevant knowledge when needed \n"
+        "4. Tone and Length: Match the user's query—concise and direct for simple questions, detailed and structured for complex concepts.\n"
         "5. Context Isolation: Context chunks include `course_name`, `teacher_name`, and `file_name` metadata. Never cross-attribute facts between different courses or files.\n"
         "\n"
         "Context:\n"
@@ -30,17 +30,14 @@ CONDENSE_PROMPT = PromptTemplate(
         "Rewrite the follow-up question as a standalone query for vector search.\n"
         "\n"
         "Rules:\n"
-        "1. Replace ALL vague references (e.g. 'his project', 'that topic', 'this concept', 'it') "
+        "1. Replace ALL vague references "
         "with the actual subject name or title from the conversation history — "
-        "prioritize resolving WHAT over WHO.\n"
-        "   Example: 'tell me more about his course' → 'Tell me more about Dr. Mehta's Aerodynamics course'\n"
-        "   Apply the same for: subject, book, PDF, project, class, report, module, topic, chapter.\n"
-        "2. Replace pronouns (he, she, his, their) with proper names only when needed for clarity.\n"
-        "3. Never reference the conversation (no 'as mentioned', 'from the history', etc.) — "
-        "if tempted to, you haven't resolved the reference yet.\n"
-        "4. Preserve original intent and instruction words exactly.\n"
-        "5. Output ONLY the rewritten query. No preamble, no explanation.\n"
-        "6. If the follow up question is a general statement, wish, slur or query that you can answer with no need of context, then just return the same question, you do not need to rewrite it with proper refrences. \n"
+        "resolve every possible reference, pronoun, name etc.\n"
+        "2. Never reference the conversation (no 'as mentioned', 'from the history', etc.) — "
+        "if tempted to, you haven't resolved the references yet.\n"
+        "3. Preserve original intent and instruction words exactly.\n"
+        "4. Output ONLY the rewritten query. No preamble, no explanation.\n"
+        "5. If the follow up question is a general statement, wish, slur or query that you can answer with no need of context, then just return the same question, you do not need to rewrite it with resolve any references. \n"
         "\n"
         "Conversation History:\n"
         "{chat_history}\n"
@@ -97,67 +94,11 @@ TOPIC_SYNTHESIS_PROMPT = PromptTemplate(
         "   - Exactly 2 EASY questions (difficulty: \"easy\"): Direct factual recall, definitions, acronyms, standard constants.\n"
         "   - Exactly 2 MEDIUM questions (difficulty: \"medium\"): Parameter variations, formula calculations, cause-and-effect relationships.\n"
         "   - Exactly 2 HARD questions (difficulty: \"hard\"): In-flight malfunction diagnosis, conflicting instrument indications, multi-step emergency decisions.\n\n"
-        "RULES FOR JSON OUTPUT:\n"
-        "- Output strictly valid JSON matching the exact schema below.\n"
-        "- Each question MUST have 'type': 'mcq', 'question', 'choices', 'answer', 'explanation', and 'difficulty'.\n"
-        "- 'choices' MUST be a list of 4 objects with 'label' ('A', 'B', 'C', 'D') and 'text'.\n"
-        "- 'answer' MUST be a single letter ('A', 'B', 'C', or 'D').\n\n"
-        "EXAMPLE JSON OUTPUT SCHEMA:\n"
-        "{{\n"
-        '  "slides": [\n'
-        '    {{\n'
-        '      "slide_number": 1,\n'
-        '      "slide_type": "concept",\n'
-        '      "title": "Core Principles",\n'
-        '      "bullets": ["Point 1", "Point 2"],\n'
-        '      "formula_or_rule": null,\n'
-        '      "diagram_mermaid": null,\n'
-        '      "warning": null\n'
-        '    }},\n'
-        '    {{\n'
-        '      "slide_number": 2,\n'
-        '      "slide_type": "technical_limits",\n'
-        '      "title": "Operating Limitations",\n'
-        '      "bullets": ["Limit rules"],\n'
-        '      "formula_or_rule": "V_ref = 1.3 * V_so",\n'
-        '      "diagram_mermaid": null,\n'
-        '      "warning": null\n'
-        '    }},\n'
-        '    {{\n'
-        '      "slide_number": 3,\n'
-        '      "slide_type": "diagram",\n'
-        '      "title": "System Flow Schematic",\n'
-        '      "bullets": ["Component interconnection"],\n'
-        '      "formula_or_rule": null,\n'
-        '      "diagram_mermaid": "graph LR\\n  A[Inlet] --> B[Compressor] --> C[Turbine]",\n'
-        '      "warning": null\n'
-        '    }},\n'
-        '    {{\n'
-        '      "slide_number": 4,\n'
-        '      "slide_type": "emergency",\n'
-        '      "title": "Emergency Protocol",\n'
-        '      "bullets": ["Cockpit indication"],\n'
-        '      "formula_or_rule": null,\n'
-        '      "diagram_mermaid": null,\n'
-        '      "warning": "Immediate pilot action checklist"\n'
-        '    }}\n'
-        '  ],\n'
-        '  "questions": [\n'
-        '    {{\n'
-        '      "type": "mcq",\n'
-        '      "question": "Sample technical question?",\n'
-        '      "choices": [\n'
-        '        {{"label": "A", "text": "Correct explanation"}},\n'
-        '        {{"label": "B", "text": "Distractor one"}},\n'
-        '        {{"label": "C", "text": "Distractor two"}},\n'
-        '        {{"label": "D", "text": "Distractor three"}}\n'
-        '      ],\n'
-        '      "answer": "A",\n'
-        '      "explanation": "Technical justification.",\n'
-        '      "difficulty": "easy"\n'
-        '    }}\n'
-        '  ]\n'
-        "}}\n\n"
+        "RULES FOR QUESTIONS:\n"
+        "- All questions must be MCQ with exactly 4 choices labeled 'A', 'B', 'C', 'D'.\n"
+        "- Exactly one choice must be correct.\n"
+        "- Provide a thorough technical explanation citing the aerodynamic principle.\n"
+        "- Output strictly valid JSON matching the schema.\n\n"
         "Context Excerpts:\n"
         "{context_str}\n\n"
         "Output JSON:\n"
