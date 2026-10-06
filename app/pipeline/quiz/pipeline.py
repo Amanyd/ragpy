@@ -174,17 +174,24 @@ async def generate_course_quiz(
         elif keywords:
             extracted_topics = keywords
 
-        # If extractor found nothing, fallback to a sensible topic phrase
-        if not extracted_topics:
-            if lesson_nodes and lesson_nodes[0].text:
-                extracted_topics = [lesson_nodes[0].metadata.get("file_name", "Lesson Topic").rsplit(".", 1)[0]]
-            else:
-                extracted_topics = ["General Flight Lesson Principles"]
+        # Ensure topic phrases are Title Case (capital first alphabet of each word) and deduplicated
+        def _to_title_case(s: str) -> str:
+            clean = s.strip().strip('"').strip("'")
+            return " ".join(w.capitalize() for w in clean.split()) if clean else ""
+
+        cleaned_topics: list[str] = []
+        seen = set()
+        for t in extracted_topics:
+            tc = _to_title_case(t)
+            if tc and tc.lower() not in seen:
+                seen.add(tc.lower())
+                cleaned_topics.append(tc)
+        extracted_topics = cleaned_topics
 
         logger.info("lesson_topics_ready count=%d topics=%s", len(extracted_topics), extracted_topics)
 
-        # Semaphore for local GPU concurrency (2 topics parallel to avoid LM Studio contention)
-        topic_sem = asyncio.Semaphore(2)
+        # Semaphore for local concurrency (process 3 topics in parallel per lesson)
+        topic_sem = asyncio.Semaphore(3)
         retriever = HybridRetriever(course_ids=[course_id], top_k=100)
         reranker = get_reranker(top_n=6)
 

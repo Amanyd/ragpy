@@ -74,8 +74,12 @@ async def extract_topics_from_nodes(nodes: list[BaseNode]) -> list[str]:
             prompt,
             context_str=context_str,
         )
-        # Clean up any quotes or extra whitespace
-        cleaned = [t.strip().strip('"').strip("'") for t in result.topics if t.strip()]
+        # Clean up any quotes or extra whitespace and convert to Title Case
+        def _to_title_case(s: str) -> str:
+            clean = s.strip().strip('"').strip("'")
+            return " ".join(w.capitalize() for w in clean.split()) if clean else ""
+
+        cleaned = [_to_title_case(t) for t in result.topics if t.strip()]
         logger.info("topics_extracted count=%d topics=%s", len(cleaned), cleaned)
         return cleaned
     except Exception as e:

@@ -84,32 +84,25 @@ TOPIC_SYNTHESIS_PROMPT = PromptTemplate(
     template=(
         "You are an expert instructor creating educational briefing material and examination questions for the topic:\n"
         "\"{topic_phrase}\"\n\n"
-        "Based on the provided technical excerpts, teach this topic clearly and progressively using structured slides, and create multiple-choice questions for the question bank.\n\n"
-        "1. SLIDES:\n"
-        "- Generate as many slides as needed to thoroughly and clearly teach this topic .\n"
-        "- Do NOT use rigid or pre-set slide names. Choose natural, informative titles for each slide based on what it teaches.\n"
+        "Based on the provided technical excerpts, generate examination questions first, followed by detailed micro-learning slides.\n\n"
+        "1. EXAMINATION QUESTIONS (Question Bank - Exactly 6 MCQs):\n"
+        "- Generate exactly 6 multiple-choice questions testing this topic across Bloom's Taxonomy BEFORE generating slides:\n"
+        "  - 2 EASY questions (difficulty: \"easy\"): Direct recall of facts, definitions, and standard terminology.\n"
+        "  - 2 MEDIUM questions (difficulty: \"medium\"): Parameter variations, formula calculations, cause-and-effect relationships.\n"
+        "  - 2 HARD questions (difficulty: \"hard\"): Complex flight scenarios, multi-step engineering reasoning, analytical problem-solving.\n"
+        "- Each question must be an MCQ with exactly 4 choices labeled 'A', 'B', 'C', 'D' and one unambiguous correct answer.\n"
+        "- Provide a clear, technical explanation citing physical and aerodynamic principles.\n\n"
+        "2. MICRO-LEARNING SLIDES:\n"
+        "- Generate as many slides as needed to thoroughly teach this topic.\n"
+        "- Do NOT use rigid or pre-set slide names. Choose natural, informative titles based on what the slide teaches.\n"
         "- For each slide, provide:\n"
         "  - 'title': A descriptive heading for what this slide teaches.\n"
-        "  - 'bullets': clear, instructive bullet points explaining the core concepts.\n"
-        "  - 'formula_or_rule': (Optional) A governing formula or calculation rule if applicable, else null.\n"
-        "  - 'diagram_mermaid': (Optional) A clean Mermaid.js diagram ('graph LR' or 'graph TD') if a diagram helps visualize the concept, else null.\n"
-        "2. EXAMINATION QUESTIONS (Question Bank):\n"
-        "- Generate exactly 6 multiple-choice questions testing this topic across Bloom's Taxonomy:\n"
-        "  - 2 EASY questions (difficulty: \"easy\"): Direct recall, definitions, standard terminology.\n"
-        "  - 2 MEDIUM questions (difficulty: \"medium\"): Parameter variations, formula calculations, cause-and-effect relationships.\n"
-        "  - 2 HARD questions (difficulty: \"hard\"): Complex scenarios, multi-step reasoning, analytical problem-solving.\n"
-        "- Each question must be MCQ with exactly 4 choices labeled 'A', 'B', 'C', 'D' and one correct answer.\n\n"
-        "CRITICAL: Output strictly valid JSON matching this structure with top-level 'slides' and 'questions':\n"
+        "  - 'bullets': 3 to 5 detailed, instructive, and substantive bullet points. Each bullet must thoroughly explain technical mechanisms, physical relationships, operational significance, or design details. DO NOT write superficial 3-5 word one-liners.\n"
+        "  - 'formula_or_rule': ONLY provide a formula if there is a real, governing mathematical equation or calculation rule directly relevant to this slide (e.g. lift equation, aspect ratio, Reynolds number). Set to null if the slide is descriptive, historical, or non-mathematical. If provided, provide ONLY raw LaTeX without labels (no 'Equation:', no 'Circulation Theory:'), and without \\( \\) or \\[ \\] delimiters.\n"
+        "  - 'diagram_mermaid': ONLY provide a Mermaid.js diagram ('graph TD' or 'graph LR') if there is a concrete, physical system schematic, mechanical workflow, or functional hierarchy to visualize. Set to null if the slide is purely narrative, historical, or conceptual. NEVER generate forced abstract word-chains like 'Theory --> Vortices --> Practical --> Theory'. If no meaningful diagram exists, set strictly to null.\n"
+        "  - 'warning': (Optional) An operational note, safety rule, or key takeaway if applicable, else null.\n\n"
+        "CRITICAL: Output strictly valid JSON matching this structure with top-level 'questions' FIRST, followed by 'slides':\n"
         "{{\n"
-        '  "slides": [\n'
-        '    {{\n'
-        '      "title": "Descriptive Slide Title",\n'
-        '      "bullets": ["Clear explanation point 1", "Clear explanation point 2"],\n'
-        '      "formula_or_rule": null,\n'
-        '      "diagram_mermaid": null,\n'
-        '      "warning": null\n'
-        '    }}\n'
-        '  ],\n'
         '  "questions": [\n'
         '    {{\n'
         '      "type": "mcq",\n'
@@ -123,6 +116,19 @@ TOPIC_SYNTHESIS_PROMPT = PromptTemplate(
         '      "answer": "A",\n'
         '      "explanation": "Technical explanation citing aerodynamic/physical principles.",\n'
         '      "difficulty": "easy"\n'
+        '    }}\n'
+        '  ],\n'
+        '  "slides": [\n'
+        '    {{\n'
+        '      "title": "Descriptive Slide Title",\n'
+        '      "bullets": [\n'
+        '        "In-depth technical explanation point 1 covering governing mechanism...",\n'
+        '        "In-depth technical explanation point 2 covering operational aerodynamics...",\n'
+        '        "In-depth technical explanation point 3 covering design implications..."\n'
+        '      ],\n'
+        '      "formula_or_rule": null,\n'
+        '      "diagram_mermaid": null,\n'
+        '      "warning": null\n'
         '    }}\n'
         '  ]\n'
         "}}\n\n"

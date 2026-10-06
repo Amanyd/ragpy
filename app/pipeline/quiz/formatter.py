@@ -119,13 +119,27 @@ class TopicSlide(BaseModel):
             elif isinstance(raw_bullets, str):
                 data["bullets"] = [line.strip("- ").strip() for line in raw_bullets.splitlines() if line.strip()]
 
-            # Formula / Equation aliases
-            if not data.get("formula_or_rule"):
-                data["formula_or_rule"] = data.get("formula") or data.get("equation") or data.get("rule") or data.get("limits")
+            # Formula / Equation aliases and sanitation
+            raw_formula = data.get("formula_or_rule") or data.get("formula") or data.get("equation") or data.get("rule") or data.get("limits")
+            if raw_formula and isinstance(raw_formula, str):
+                f_str = raw_formula.strip()
+                if f_str.lower() in ("null", "none", "n/a", "no formula", "none.", ""):
+                    data["formula_or_rule"] = None
+                else:
+                    data["formula_or_rule"] = f_str
+            else:
+                data["formula_or_rule"] = None
 
-            # Diagram aliases
-            if not data.get("diagram_mermaid"):
-                data["diagram_mermaid"] = data.get("diagram") or data.get("mermaid") or data.get("chart")
+            # Diagram aliases and sanitation
+            raw_diag = data.get("diagram_mermaid") or data.get("diagram") or data.get("mermaid") or data.get("chart")
+            if raw_diag and isinstance(raw_diag, str):
+                diag_str = raw_diag.strip()
+                if diag_str.lower() in ("null", "none", "n/a", "no diagram", "none.", ""):
+                    data["diagram_mermaid"] = None
+                else:
+                    data["diagram_mermaid"] = diag_str
+            else:
+                data["diagram_mermaid"] = None
 
             # Warning / Note / Takeaway aliases
             if not data.get("warning"):
