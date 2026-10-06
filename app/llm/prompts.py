@@ -89,7 +89,7 @@ TOPIC_SYNTHESIS_PROMPT = PromptTemplate(
         "- Generate exactly 6 multiple-choice questions testing this topic across Bloom's Taxonomy BEFORE generating slides:\n"
         "  - 2 EASY questions (difficulty: \"easy\"): Direct recall of facts, definitions, and standard terminology.\n"
         "  - 2 MEDIUM questions (difficulty: \"medium\"): Parameter variations, formula calculations, cause-and-effect relationships.\n"
-        "  - 2 HARD questions (difficulty: \"hard\"): Complex flight scenarios, multi-step engineering reasoning, analytical problem-solving.\n"
+        "  - 2 HARD questions (difficulty: \"hard\"): Complex examples, multi-step engineering reasoning, analytical problem-solving.\n"
         "- Each question must be an MCQ with exactly 4 choices labeled 'A', 'B', 'C', 'D' and one unambiguous correct answer.\n"
         "- Provide a clear, technical explanation citing physical and aerodynamic principles.\n\n"
         "2. MICRO-LEARNING SLIDES:\n"
@@ -97,41 +97,40 @@ TOPIC_SYNTHESIS_PROMPT = PromptTemplate(
         "- Do NOT use rigid or pre-set slide names. Choose natural, informative titles based on what the slide teaches.\n"
         "- For each slide, provide:\n"
         "  - 'title': A descriptive heading for what this slide teaches.\n"
-        "  - 'bullets': 3 to 5 detailed, instructive, and substantive bullet points. Each bullet must thoroughly explain technical mechanisms, physical relationships, operational significance, or design details. DO NOT write superficial 3-5 word one-liners.\n"
-        "  - 'formula_or_rule': ONLY provide a formula if there is a real, governing mathematical equation or calculation rule directly relevant to this slide (e.g. lift equation, aspect ratio, Reynolds number). Set to null if the slide is descriptive, historical, or non-mathematical. If provided, provide ONLY raw LaTeX without labels (no 'Equation:', no 'Circulation Theory:'), and without \\( \\) or \\[ \\] delimiters.\n"
-        "  - 'diagram_mermaid': ONLY provide a Mermaid.js diagram ('graph TD' or 'graph LR') if there is a concrete, physical system schematic, mechanical workflow, or functional hierarchy to visualize. Set to null if the slide is purely narrative, historical, or conceptual. NEVER generate forced abstract word-chains like 'Theory --> Vortices --> Practical --> Theory'. If no meaningful diagram exists, set strictly to null.\n"
-        "  - 'warning': (Optional) An operational note, safety rule, or key takeaway if applicable, else null.\n\n"
-        "CRITICAL: Output strictly valid JSON matching this structure with top-level 'questions' FIRST, followed by 'slides':\n"
-        "{{\n"
+        "  - 'bullets': detailed, instructive, and substantive bullet points. Each bullet must thoroughly explain details.\n"
+        "  - 'formula_or_rule': ONLY provide a formula if there is a real, governing mathematical equation or calculation rule directly relevant to this slide. Set to null if the slide is descriptive or non-mathematical. If provided, provide ONLY raw LaTeX without labels (no 'Equation:', no 'Formula:'), and without \\( \\) or \\[ \\] delimiters.\n"
+        "  - 'diagram_mermaid': ONLY provide a Mermaid.js diagram ('graph TD' or 'graph LR') if there is a concrete, physical system schematic, mechanical workflow, or functional hierarchy to visualize. Set to null if the slide is purely narrative, historical, or conceptual. NEVER generate forced abstract word-chains. If no meaningful diagram exists, set strictly to null.\n"
+        "CRITICAL: Output strictly valid JSON matching this structure with top-level 'questions', followed by 'slides':\n"
+        "{\n"
         '  "questions": [\n'
-        '    {{\n'
+        '    {\n'
         '      "type": "mcq",\n'
         '      "question": "Question text testing the topic?",\n'
         '      "choices": [\n'
-        '        {{"label": "A", "text": "Option A"}},\n'
-        '        {{"label": "B", "text": "Option B"}},\n'
-        '        {{"label": "C", "text": "Option C"}},\n'
-        '        {{"label": "D", "text": "Option D"}}\n'
+        '        {"label": "A", "text": "Option A"},\n'
+        '        {"label": "B", "text": "Option B"},\n'
+        '        {"label": "C", "text": "Option C"},\n'
+        '        {"label": "D", "text": "Option D"}\n'
         '      ],\n'
         '      "answer": "A",\n'
-        '      "explanation": "Technical explanation citing aerodynamic/physical principles.",\n'
+        '      "explanation": "Explanation citing the principles involved.",\n'
         '      "difficulty": "easy"\n'
-        '    }}\n'
+        '    }\n'
         '  ],\n'
         '  "slides": [\n'
-        '    {{\n'
+        '    {\n'
         '      "title": "Descriptive Slide Title",\n'
         '      "bullets": [\n'
-        '        "In-depth technical explanation point 1 covering governing mechanism...",\n'
-        '        "In-depth technical explanation point 2 covering operational aerodynamics...",\n'
-        '        "In-depth technical explanation point 3 covering design implications..."\n'
+        '        "Detailed explanation point 1 ",\n'
+        '        "Detailed explanation point 2 ",\n'
+        '        "Detailed explanation point 3 "\n'
         '      ],\n'
         '      "formula_or_rule": null,\n'
         '      "diagram_mermaid": null,\n'
         '      "warning": null\n'
-        '    }}\n'
+        '    }\n'
         '  ]\n'
-        "}}\n\n"
+        "}\n\n"
         "Context Excerpts:\n"
         "{context_str}\n\n"
         "Output JSON:\n"
